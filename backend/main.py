@@ -97,6 +97,10 @@ async def root():
     return {
         "message": "Assessment Engine is Online"
     }
+    
+@app.get("/ping")
+async def ping():
+    return "pong"
 
 # -----------------------------------
 # HEALTH CHECK
