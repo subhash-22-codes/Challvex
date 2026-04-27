@@ -66,8 +66,8 @@ export default function AdminReview() {
     if (Object.keys(scores).length < (challenge?.questions.length || 0)) {
        return setModal({
          isOpen: true,
-         title: "incomplete assessment",
-         message: "please provide a score for all questions before submitting the final grade.",
+         title: "Incomplete Assessment",
+         message: "Please provide a score for all questions before submitting the final grade.",
          type: "error"
        });
     }
@@ -82,15 +82,15 @@ export default function AdminReview() {
       });
       setModal({
         isOpen: true,
-        title: "review published",
-        message: "the student assessment has been successfully updated and finalized.",
+        title: "Review published",
+        message: "The student assessment has been successfully updated and finalized.",
         type: "success"
       });
     } catch (err) {
       setModal({
         isOpen: true,
-        title: "sync error",
-        message: "could not save the review. please check your server connection.",
+        title: "Sync Error",
+        message: "Could not save the review. Please check your server connection.",
         type: "error"
       });
     } finally {
@@ -100,7 +100,7 @@ export default function AdminReview() {
 
   if (loading) return (
     <div className="h-screen bg-[#09090b] flex items-center justify-center text-[11px] text-zinc-500 animate-pulse">
-      loading review session...
+      Loading review session...
     </div>
   );
     const currentQuestion = challenge?.questions[activeQ];
@@ -116,22 +116,33 @@ export default function AdminReview() {
     <div className="h-screen bg-[#09090b] text-zinc-300 flex flex-col font-sans overflow-hidden">
       
       {/* UI MODAL */}
-      {modal.isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#0c0c0e] border border-zinc-800 rounded-xl p-8 max-w-sm w-full mx-4 shadow-2xl">
-            <h3 className={`text-sm font-medium mb-2 ${modal.type === 'error' ? 'text-red-400' : 'text-zinc-100'}`}>
-              {modal.title}
-            </h3>
-            <p className="text-xs text-zinc-400 mb-8 leading-relaxed lowercase">{modal.message}</p>
-            <button 
-              onClick={() => modal.type === 'success' ? navigate('/admin') : setModal({ ...modal, isOpen: false })} 
-              className="w-full py-2 bg-zinc-100 text-zinc-950 text-[11px] font-medium rounded hover:bg-white transition-colors"
-            >
-              {modal.type === 'success' ? 'return to dashboard' : 'close'}
-            </button>
-          </div>
+     {modal.isOpen && (
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 px-4">
+        <div className="bg-[#0c0c0e] border border-zinc-800 rounded-none p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+          
+          {/* Title */}
+          <h3 className={`text-[13px] font-semibold mb-3 tracking-tight ${
+            modal.type === 'error' ? 'text-red-400' : 'text-white'
+          }`}>
+            {modal.title}
+          </h3>
+
+          {/* Message - Removed 'lowercase' and used proper line height */}
+          <p className="text-[11px] text-zinc-400 mb-8 leading-relaxed">
+            {modal.message}
+          </p>
+
+          {/* Action - Sharp edges and Sentence case */}
+          <button 
+            onClick={() => modal.type === 'success' ? navigate('/admin') : setModal({ ...modal, isOpen: false })} 
+            className="w-full py-2.5 bg-zinc-100 text-zinc-950 text-[11px] font-medium rounded-none hover:bg-white transition-colors"
+          >
+            {modal.type === 'success' ? 'Return to dashboard' : 'Close'}
+          </button>
+
         </div>
-      )}
+      </div>
+    )}
 
       {/* HEADER */}
       <nav className="h-16 border-b border-zinc-800 bg-[#09090b]/95 backdrop-blur-md px-6 lg:px-8 flex items-center justify-between shrink-0 z-[100]">

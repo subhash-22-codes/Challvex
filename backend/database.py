@@ -1,5 +1,6 @@
 import os
 import logging
+import certifi
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ASCENDING, DESCENDING
 
@@ -24,6 +25,7 @@ client = AsyncIOMotorClient(
     socketTimeoutMS=10000,
     maxPoolSize=20,
     minPoolSize=1,
+    tlsCAFile=certifi.where()
 )
 
 db = client[DB_NAME]
