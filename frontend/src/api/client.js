@@ -1,212 +1,325 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:10000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:10000";
 
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
+/* ----------------------------------
+   LOCAL HELPERS
+---------------------------------- */
+
+const logoutUser = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+
+  window.dispatchEvent(
+    new Event("auth-logout")
+  );
+};
+
+const getToken = () =>
+  localStorage.getItem("token");
+
+const getHeaders = (
+  customHeaders = {},
+  withAuth = true
+) => {
+  const token = getToken();
+
   return {
     "Content-Type": "application/json",
-    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+    ...(withAuth && token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : {}),
+    ...customHeaders,
   };
 };
 
-// --- AUTH ---
-export const loginUser = async (credentials) => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(credentials),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || "Authentication failed");
+const parseResponse = async (response) => {
+  const contentType =
+    response.headers.get("content-type") || "";
+
+  if (
+    contentType.includes(
+      "application/json"
+    )
+  ) {
+    return await response.json();
   }
-  return await response.json();
+
+  const text = await response.text();
+  return text || null;
 };
 
-export const signupUser = async (userData) => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(userData),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || "Registration failed");
+/* ----------------------------------
+   CORE REQUEST WRAPPER
+---------------------------------- */
+
+const request = async (
+  endpoint,
+  {
+    method = "GET",
+    body = null,
+    auth = true,
+    headers = {},
+  } = {}
+) => {
+  const response = await fetch(
+    `${API_BASE_URL}${endpoint}`,
+    {
+      method,
+      headers: getHeaders(
+        headers,
+        auth
+      ),
+      ...(body
+        ? {
+            body: JSON.stringify(
+              body
+            ),
+          }
+        : {}),
+    }
+  );
+
+  const data =
+    await parseResponse(response);
+
+  /* ----------------------------
+     ONLY Protected Routes:
+     Expired / Invalid Session
+  ---------------------------- */
+  if (
+    response.status === 401 &&
+    auth === true
+  ) {
+    logoutUser();
+
+    throw new Error(
+      "Session expired. Please login again."
+    );
   }
-  return await response.json();
-};
 
-// NEW: Forgot Password Request
-export const forgotPassword = async (email) => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
+  /* ----------------------------
+     Other API Errors
+  ---------------------------- */
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || "Failed to send reset link");
+    throw new Error(
+      data?.detail ||
+        data ||
+        "Request failed"
+    );
   }
-  return await response.json();
+
+  return data;
 };
 
-// NEW: Reset Password Actual Update
-export const resetPassword = async (token, newPassword) => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+/* ----------------------------------
+   AUTH
+---------------------------------- */
+
+export const loginUser = async (
+  credentials
+) =>
+  request("/api/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token, new_password: newPassword }),
+    auth: false,
+    body: credentials,
   });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || "Failed to reset password");
-  }
-  return await response.json();
-};
 
-// --- CHALLENGES ---
-export const createDailyChallenge = async (challengeData) => {
-  const response = await fetch(`${API_BASE_URL}/api/challenges`, {
+export const signupUser = async (
+  userData
+) =>
+  request("/api/auth/signup", {
     method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(challengeData),
+    auth: false,
+    body: userData,
   });
-  if (!response.ok) throw new Error("Failed to save challenge");
-  return await response.json();
-};
 
-export const getAllChallenges = async (personal = false) => {
-  const url = personal 
-    ? `${API_BASE_URL}/api/challenges?personal=true` 
-    : `${API_BASE_URL}/api/challenges`;
+export const verifyUserOtp = async (
+  email,
+  otp
+) =>
+  request(
+    "/api/auth/verify-otp",
+    {
+      method: "POST",
+      auth: false,
+      body: { email, otp },
+    }
+  );
 
-  const response = await fetch(url, {
-    headers: getHeaders()
-  });
-  if (!response.ok) throw new Error("Failed to fetch challenges");
-  return await response.json();
-};
+export const forgotPassword =
+  async (email) =>
+    request(
+      "/api/auth/forgot-password",
+      {
+        method: "POST",
+        auth: false,
+        body: { email },
+      }
+    );
 
-export const getChallengeBySlot = async (slotId) => {
-  const response = await fetch(`${API_BASE_URL}/api/challenges/${slotId}`, {
-    headers: getHeaders()
-  });
-  if (!response.ok) throw new Error("Challenge not found");
-  return await response.json();
-};
+export const resetPassword =
+  async (
+    token,
+    newPassword
+  ) =>
+    request(
+      "/api/auth/reset-password",
+      {
+        method: "POST",
+        auth: false,
+        body: {
+          token,
+          new_password:
+            newPassword,
+        },
+      }
+    );
 
-export const getLatestChallenge = async () => {
-  const response = await fetch(`${API_BASE_URL}/api/challenges/latest`, {
-    headers: getHeaders()
-  });
-  if (!response.ok) throw new Error("No challenges found");
-  return await response.json();
-};
+/* ----------------------------------
+   CHALLENGES
+---------------------------------- */
 
-export const updateChallengeStatus = async (slotId, status) => {
-  const response = await fetch(`${API_BASE_URL}/api/challenges/${slotId}/status`, {
-    method: "PATCH",
-    headers: getHeaders(),
-    body: JSON.stringify({ status }),
-  });
-  if (!response.ok) throw new Error("Failed to update status");
-  return await response.json();
-};
+export const createDailyChallenge =
+  async (challengeData) =>
+    request("/api/challenges", {
+      method: "POST",
+      body: challengeData,
+    });
 
-// --- SUBMISSIONS ---
-export const getAllSubmissions = async (adminView = false) => {
-  const url = adminView 
-    ? `${API_BASE_URL}/api/submissions?admin_view=true` 
-    : `${API_BASE_URL}/api/submissions`;
+export const getAllChallenges =
+  async (personal = false) =>
+    request(
+      personal
+        ? "/api/challenges?personal=true"
+        : "/api/challenges"
+    );
 
-  const response = await fetch(url, {
-    headers: getHeaders()
-  });
-  if (!response.ok) throw new Error("Failed to fetch submissions");
-  return await response.json();
-};
+export const getChallengeBySlot =
+  async (slotId) =>
+    request(
+      `/api/challenges/${slotId}`
+    );
 
-export const saveSubmission = async (submissionData) => {
-  const response = await fetch(`${API_BASE_URL}/api/submissions`, {
+export const getLatestChallenge =
+  async () =>
+    request(
+      "/api/challenges/latest"
+    );
+
+export const updateChallengeStatus =
+  async (
+    slotId,
+    status
+  ) =>
+    request(
+      `/api/challenges/${slotId}/status`,
+      {
+        method: "PATCH",
+        body: { status },
+      }
+    );
+
+export const updateDailyChallenge = async (
+  slotId,
+  challengeData
+) =>
+  request(
+    `/api/challenges/${slotId}`,
+    {
+      method: "PUT",
+      body: challengeData,
+    }
+  );
+
+export const deleteChallenge = async (
+  slotId
+) =>
+  request(
+    `/api/challenges/${slotId}`,
+    {
+      method: "DELETE",
+    }
+  );
+/* ----------------------------------
+   SUBMISSIONS
+---------------------------------- */
+
+export const getAllSubmissions =
+  async (adminView = false) =>
+    request(
+      adminView
+        ? "/api/submissions?admin_view=true"
+        : "/api/submissions"
+    );
+
+export const saveSubmission =
+  async (submissionData) =>
+    request("/api/submissions", {
+      method: "POST",
+      body: submissionData,
+    });
+
+export const getSubmissionBySlot =
+  async (slotId) => {
+    try {
+      return await request(
+        `/api/submissions/${slotId}`
+      );
+    } catch {
+      return null;
+    }
+  };
+
+export const getSubmissionByStudent =
+  async (
+    slotId,
+    studentId
+  ) =>
+    request(
+      `/api/submissions/review/${slotId}/${studentId}`
+    );
+
+export const updateSubmissionStatus =
+  async (
+    slotId,
+    studentId,
+    reviewData
+  ) =>
+    request(
+      `/api/submissions/review/${slotId}/${studentId}`,
+      {
+        method: "PUT",
+        body: reviewData,
+      }
+    );
+
+export const discardSubmission =
+  async (slotId) =>
+    request(
+      `/api/submissions/${slotId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+/* ----------------------------------
+   JUDGE
+---------------------------------- */
+
+export const runCode = async (
+  executionData
+) =>
+  request("/api/judge", {
     method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(submissionData),
+    body: executionData,
   });
-  if (!response.ok) throw new Error("Failed to save submission");
-  return await response.json();
-};
 
-export const getSubmissionBySlot = async (slotId) => {
-  const response = await fetch(`${API_BASE_URL}/api/submissions/${slotId}`, {
-    headers: getHeaders()
-  });
-  if (!response.ok) return null; 
-  return await response.json();
-};
-
-export const getSubmissionByStudent = async (slotId, studentId) => {
-  const response = await fetch(`${API_BASE_URL}/api/submissions/review/${slotId}/${studentId}`, {
-    headers: getHeaders()
-  });
-  if (!response.ok) throw new Error("Failed to fetch submission for review");
-  return await response.json();
-};
-
-export const updateSubmissionStatus = async (slotId, studentId, reviewData) => {
-  const response = await fetch(`${API_BASE_URL}/api/submissions/review/${slotId}/${studentId}`, {
-    method: "PUT",
-    headers: getHeaders(),
-    body: JSON.stringify(reviewData),
-  });
-  if (!response.ok) throw new Error("Failed to update review");
-  return await response.json();
-};
-
-// --- JUDGE ---
-export const runCode = async (executionData) => {
-  const response = await fetch(`${API_BASE_URL}/api/judge`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(executionData),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || "Execution failed");
-  }
-  return await response.json();
-};
-
-export const discardSubmission = async (slotId) => {
-  const response = await fetch(`${API_BASE_URL}/api/submissions/${slotId}`, {
-    method: "DELETE",
-    headers: getHeaders(),
-  });
-  if (!response.ok) throw new Error("Failed to discard draft");
-  return await response.json();
-};
-
-export const runAdminDryRun = async (payload) => {
-  const response = await fetch(`${API_BASE_URL}/api/judge`, {
-    method: "POST",
-    headers: getHeaders(), 
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || "Judge execution failed");
-  }
-  return await response.json();
-};
-
-// Add this to your api/client.js
-export const verifyUserOtp = async (email, otp) => {
-  const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, otp }),
-  });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.detail || "Verification failed");
-  }
-  return await response.json();
-};
+export const runAdminDryRun =
+  async (payload) =>
+    request("/api/judge", {
+      method: "POST",
+      body: payload,
+    });

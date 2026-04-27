@@ -1,26 +1,41 @@
 /* eslint-disable no-unused-vars */
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { getAllChallenges, getAllSubmissions } from '../api/client';
-import { useAuth } from '../context/AuthContext';
+import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { getAllChallenges, getAllSubmissions } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 
 export default function StudentDashboard() {
   const [challenges, setChallenges] = useState([]);
   const [submissions, setSubmissions] = useState([]);
+  const [filteredChallenges, setFilteredChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState({ show: false, message: "" });
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+
   const { user } = useAuth();
+
+  // Notification auto-hide logic
+  useEffect(() => {
+    if (toast.show) {
+      const timer = setTimeout(() => setToast({ show: false, message: "" }), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [challengesData, submissionsData] = await Promise.all([
           getAllChallenges(),
-          getAllSubmissions()
+          getAllSubmissions(),
         ]);
-        setChallenges(challengesData);
-        setSubmissions(submissionsData);
-      } catch (err) {
-        console.error("Sync failed");
+        setChallenges(challengesData || []);
+        setSubmissions(submissionsData || []);
+      } catch (error) {
+        setToast({ show: true, message: "We're having trouble updating your dashboard. Please refresh." });
       } finally {
         setLoading(false);
       }
@@ -28,160 +43,234 @@ export default function StudentDashboard() {
     fetchData();
   }, []);
 
-  const getChallengeStatus = (ch) => {
-    // UPDATED: Comparing slot_id (strings) instead of day_number (numbers)
-    const userSub = submissions.find(s => s.slot_id === ch.slot_id);
-    
-    if (userSub) {
-      if (userSub.status === "reviewed") {
-        return { type: "reviewed", average_score: userSub.average_score || 0 };
+  const getChallengeStatus = useCallback(
+    (challenge) => {
+      const userSub = submissions.find((sub) => sub.slot_id === challenge.slot_id);
+      if (userSub) {
+        if (userSub.status === "reviewed") {
+          return { type: "reviewed", average_score: userSub.average_score || 0 };
+        }
+        return { type: "submitted" };
       }
-      return { type: "submitted" };
-    }
+      if (challenge.status === "draft") return { type: "locked" };
+      return { type: "active" };
+    },
+    [submissions]
+  );
 
-    if (ch.status === "draft") return { type: "locked" };
-    return { type: "active" };
-  };
+  useEffect(() => {
+    let data = [...challenges];
+    data = data.filter((challenge) => {
+      const term = search.toLowerCase();
+      const matchesSearch =
+        (challenge.title || "").toLowerCase().includes(term) ||
+        (challenge.slot_id || "").toLowerCase().includes(term) ||
+        (challenge.created_by || "").toLowerCase().includes(term);
+
+      const status = getChallengeStatus(challenge);
+      const matchesStatus = statusFilter === "all" || status.type === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+
+    data.sort((a, b) => {
+      if (sortBy === "oldest") return new Date(a.created_at) - new Date(b.created_at);
+      if (sortBy === "title") return (a.title || "").localeCompare(b.title || "");
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    setFilteredChallenges(data);
+  }, [challenges, search, statusFilter, sortBy, getChallengeStatus]);
+
+  const reviewedSubs = submissions.filter((sub) => sub.status === "reviewed");
+  const avgScore = reviewedSubs.length > 0
+    ? (reviewedSubs.reduce((acc, curr) => acc + (curr.average_score || 0), 0) / reviewedSubs.length).toFixed(1)
+    : "0.0";
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-        <span className="text-xs text-zinc-500 animate-pulse">Loading dashboard...</span>
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-1 bg-zinc-600 animate-pulse" />
+          <span className="text-[11px] text-zinc-500 tracking-wider">Loading your dashboard...</span>
+        </div>
       </div>
     );
   }
 
-  const reviewedSubs = submissions.filter(s => s.status === 'reviewed');
-  const avgScore = reviewedSubs.length > 0 
-    ? (reviewedSubs.reduce((acc, curr) => acc + (curr.average_score || 0), 0) / reviewedSubs.length).toFixed(1) 
-    : '0.0';
-
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-300 font-sans">
-      <main className="max-w-4xl mx-auto px-4 py-16 lg:py-24">
+    <div className="min-h-screen bg-[#09090b] text-zinc-300 font-sans antialiased">
+      
+      {/* Minimalist White Notification */}
+      {toast.show && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-4">
+          <div className="bg-white text-black px-5 py-2.5 shadow-2xl flex items-center gap-3">
+            <span className="text-[11px] font-bold tracking-tight">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      <main className="max-w-6xl mx-auto px-6 py-12 lg:py-20">
         
-        {/* Profile Header */}
-        <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8">
-          <div className="space-y-1">
-            <h1 className="text-lg font-medium text-zinc-100 tracking-tight">
-              Hello, {user?.username || 'Developer'}
-            </h1>
-            <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
-              Track your progress and complete assessments to unlock the next stage.
-            </p>
-          </div>
-
-          <div className="flex gap-6">
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider">Completed</p>
-              <p className="text-sm font-medium text-zinc-100">
-                 {submissions.length} <span className="text-zinc-600">/ {challenges.filter(c => c.status === 'published').length}</span>
+        {/* Welcome Section */}
+        <section className="mb-12">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10">
+            <header className="space-y-1">
+              <p className="text-[11px] font-medium text-zinc-500 tracking-widest uppercase">
+                Solver dashboard
               </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium text-zinc-600 uppercase tracking-wider">Average Score</p>
-              <p className="text-sm font-medium text-zinc-100">
-                {avgScore} <span className="text-zinc-600 text-xs">/ 10</span>
+              <h1 className="text-2xl font-medium text-white tracking-tight">
+                Hello, {user?.username || "Guest"}
+              </h1>
+              <p className="text-xs text-zinc-500 max-w-sm leading-relaxed">
+                Track your progress, view your scores, and continue solving technical challenges.
               </p>
+            </header>
+
+            {/* Overview Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-zinc-800 border border-zinc-800">
+              {[
+                { label: "Total challenges", value: challenges.length },
+                { label: "Submitted", value: submissions.length },
+                { label: "Reviewed", value: reviewedSubs.length },
+                { label: "Average score", value: avgScore },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-[#09090b] px-5 py-3 min-w-[120px]">
+                  <p className="text-[10px] text-zinc-500 font-medium">{stat.label}</p>
+                  <p className="text-base font-semibold text-white mt-0.5">{stat.value}</p>
+                </div>
+              ))}
             </div>
           </div>
-        </header>
+        </section>
 
-        {/* List of Challenges */}
-        <div className="space-y-1">
-          <div className="pb-4 border-b border-zinc-800/50 mb-6">
-            <h2 className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest">Assessments</h2>
+        {/* Toolbar */}
+        <section className="mb-10">
+          <div className="flex flex-col md:flex-row gap-px bg-zinc-800 border border-zinc-800">
+            <div className="flex-1 bg-[#09090b] flex items-center px-4">
+              <svg className="w-3.5 h-3.5 text-zinc-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input
+                type="text"
+                placeholder="Search by title or creator..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-11 bg-transparent text-xs text-zinc-200 placeholder:text-zinc-600 outline-none"
+              />
+            </div>
+            <div className="flex flex-row gap-px bg-zinc-800">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-11 bg-[#09090b] px-4 text-[11px] text-zinc-400 outline-none border-none cursor-pointer hover:text-zinc-100 transition-colors"
+              >
+                <option value="all">All status</option>
+                <option value="active">Available</option>
+                <option value="submitted">Under review</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="locked">Coming soon</option>
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="h-11 bg-[#09090b] px-4 text-[11px] text-zinc-400 outline-none border-none cursor-pointer hover:text-zinc-100 transition-colors"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="title">Alphabetical</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Challenge List */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">Available challenges</h2>
+            <span className="text-[10px] text-zinc-600 font-mono">{filteredChallenges.length} total results</span>
           </div>
 
-          <div className="space-y-2">
-            {challenges.map((ch) => {
-              const status = getChallengeStatus(ch);
-              const isLocked = status.type === 'locked';
-              
-              return (
-                <div 
-                  // UPDATED: Using slot_id as key
-                  key={ch.slot_id}
-                  className={`flex items-center justify-between p-4 rounded-md border transition-colors ${
-                    isLocked 
-                      ? 'bg-transparent border-transparent opacity-40' 
-                      : 'bg-zinc-900/40 border-zinc-800/50 hover:border-zinc-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-6">
-                    {/* UPDATED: Displaying the slot_id as the ID tag */}
-                    <span className="text-[10px] font-mono text-zinc-500 w-fit px-2 py-0.5 border border-zinc-800 rounded bg-black/20">
-                      {ch.slot_id}
-                    </span>
+          <div className="border-t border-zinc-800">
+            {filteredChallenges.length > 0 ? (
+              filteredChallenges.map((challenge) => {
+                const status = getChallengeStatus(challenge);
+                const isLocked = status.type === "locked";
 
-                    <div>
-                      <h3 className={`text-sm font-medium ${isLocked ? 'text-zinc-500' : 'text-zinc-100'}`}>
-                        {/* UPDATED: Defaulting to slot_id if title is missing */}
-                        {ch.title || `Challenge ${ch.slot_id}`}
+                return (
+                  <div
+                    key={challenge.slot_id}
+                    className={`group flex flex-col md:flex-row md:items-center justify-between p-5 border-b border-zinc-800 transition-colors ${
+                      isLocked ? "opacity-40 grayscale" : "hover:bg-zinc-900/30"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-mono text-zinc-600">
+                          {challenge.slot_id}
+                        </span>
+
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 border border-zinc-800 bg-zinc-950">
+                          <div
+                            className={`w-1 h-1 rounded-full ${
+                              status.type === "reviewed"
+                                ? "bg-emerald-500"
+                                : status.type === "submitted"
+                                ? "bg-amber-500"
+                                : status.type === "active"
+                                ? "bg-zinc-400"
+                                : "bg-zinc-700"
+                            }`}
+                          />
+
+                          <span className="text-[10px] text-zinc-400 font-medium">
+                            {status.type === "reviewed"
+                              ? `${status.average_score}/10`
+                              : status.type === "submitted"
+                              ? "Under review"
+                              : status.type === "locked"
+                              ? "Draft"
+                              : "Live"}
+                          </span>
+                        </div>
+                      </div>
+                      <h3 className="text-[13px] font-medium text-zinc-100 leading-none group-hover:text-white transition-colors">
+                        {challenge.title || `Challenge ${challenge.slot_id}`}
                       </h3>
-                      
-                      <div className="mt-0.5 flex items-center gap-3">
-                          {status.type === 'reviewed' && (
-                            <span className="text-[10px] text-emerald-500 font-mono">
-                              Score: {status.average_score || 0}/10
-                            </span>
-                          )}
-                        {status.type === 'submitted' && (
-                           <span className="text-[10px] text-amber-500">Under review</span>
-                        )}
-                        {status.type === 'active' && (
-                           <span className="text-[10px] text-zinc-400">Available Now</span>
-                        )}
-
-                        {!isLocked && ch.created_by && (
-                          <>
-                            <div className="w-1 h-1 rounded-full bg-zinc-800"></div>
-                            <span className="text-[10px] text-zinc-600 lowercase">
-                              by {ch.created_by} • {new Date(ch.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                            </span>
-                          </>
-                        )}
-
-                        {isLocked && (
-                           <span className="text-[10px] text-zinc-600 italic">Opening Soon</span>
-                        )}
+                      <div className="flex items-center gap-2 text-[10px] text-zinc-600">
+                        <span>By {challenge.created_by || "Admin"}</span>
+                        <span>•</span>
+                        <span>{new Date(challenge.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                       </div>
                     </div>
+
+                    <div className="mt-4 md:mt-0">
+                     {!isLocked && (
+                      <Link
+                        to={`/arena/${challenge.slot_id}`}
+                        className={`inline-flex items-center h-8 px-4 text-[11px] font-bold border rounded-none transition-all ${
+                          status.type === "reviewed"
+                            ? "border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-200"
+                            : status.type === "submitted"
+                            ? "bg-amber-400 border-amber-400 text-black hover:bg-amber-300"
+                            : "bg-white border-white text-black hover:bg-zinc-200"
+                        }`}
+                      >
+                        {status.type === "reviewed"
+                          ? "View submission"
+                          : status.type === "submitted"
+                          ? "Under review"
+                          : "Start assessment"}
+                      </Link>
+                    )}
+                    </div>
                   </div>
-
-                  {!isLocked && (
-                    <Link 
-                      // UPDATED: Navigation now uses slot_id string
-                      to={`/arena/${ch.slot_id}`}
-                      className={`text-[11px] font-medium px-4 py-1.5 rounded transition-all ${
-                        status.type === 'active' 
-                          ? 'bg-zinc-100 text-zinc-950 hover:bg-white shadow-sm' 
-                          : 'text-zinc-400 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-600'
-                      }`}
-                    >
-                      {status.type === 'reviewed' ? 'View Code' : 'Start Assessment'}
-                    </Link>
-                  )}
-                </div>
-              );
-            })}
-
-            {challenges.length === 0 && (
-              <div className="py-20 text-center">
-                <p className="text-xs text-zinc-600 italic">No assessments available yet.</p>
+                );
+              })
+            ) : (
+              <div className="py-20 text-center border-b border-zinc-800 border-dashed">
+                <p className="text-[11px] text-zinc-600 tracking-widest uppercase">No challenges match your search</p>
               </div>
             )}
           </div>
-        </div>
-
-        {/* System Footer */}
-        <footer className="mt-32 pt-6 border-t border-zinc-900 flex justify-between items-center text-[10px] text-zinc-600">
-          <span>Platform v3.5 (Slot Logic)</span>
-          <div className="flex gap-4">
-            <span className="hover:text-zinc-400 cursor-pointer">Support</span>
-            <span className="hover:text-zinc-400 cursor-pointer">Terms</span>
-          </div>
-        </footer>
+        </section>
       </main>
     </div>
   );

@@ -103,10 +103,14 @@ export default function AdminReview() {
       loading review session...
     </div>
   );
+    const currentQuestion = challenge?.questions[activeQ];
+    const studentCode = submission?.answers?.[activeQ] || "# No submission for this question.";
+    const results = submission?.results?.[activeQ] || null;
 
-  const currentQuestion = challenge?.questions[activeQ];
-  const studentCode = submission?.answers?.[activeQ] || "# No submission for this question.";
-  const results = submission?.results?.[activeQ] || null;
+    const totalCases = results?.total || 0;
+    const passedCases = results?.passed || 0;
+    const failedCases = totalCases - passedCases;
+    const autoScore = results?.score || 0;
 
   return (
     <div className="h-screen bg-[#09090b] text-zinc-300 flex flex-col font-sans overflow-hidden">
@@ -130,149 +134,257 @@ export default function AdminReview() {
       )}
 
       {/* HEADER */}
-      <nav className="h-14 border-b border-zinc-800/50 flex items-center px-6 shrink-0 bg-[#09090b] justify-between z-[100]">
-        <div className="flex items-center gap-6">
-          <button onClick={() => navigate('/admin')} className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors">
-            back to list
+      <nav className="h-16 border-b border-zinc-800 bg-[#09090b]/95 backdrop-blur-md px-6 lg:px-8 flex items-center justify-between shrink-0 z-[100]">
+
+        {/* Left */}
+        <div className="flex items-center gap-5 min-w-0">
+          <button
+            onClick={() => navigate("/admin")}
+            className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors"
+          >
+            Back
           </button>
-          <div className="h-3 w-[1px] bg-zinc-800"></div>
-          <div className="flex flex-col">
-            <span className="text-[11px] font-medium text-zinc-100">{submission?.student_name}</span>
-            <span className="text-[10px] text-zinc-500 font-mono lowercase">id: {studentId}</span>
+
+          <div className="h-4 w-px bg-zinc-800" />
+
+          <div className="min-w-0">
+            <div className="text-[12px] font-medium text-zinc-100 truncate">
+              {submission?.student_name || "Candidate"}
+            </div>
+
+            <div className="text-[10px] text-zinc-500 mt-0.5 flex items-center gap-2">
+              <span className="font-mono">{slotId}</span>
+              <span>•</span>
+              <span className="capitalize">{submission?.status || "pending"}</span>
+            </div>
           </div>
         </div>
 
-        {/* Question Switcher */}
-        <div className="flex items-center gap-2">
-          {challenge?.questions.map((_, idx) => (
-            <button 
-              key={idx} 
-              onClick={() => setActiveQ(idx)} 
-              className={`w-7 h-7 rounded text-[10px] font-mono border transition-all ${activeQ === idx ? 'bg-zinc-100 text-zinc-950 border-zinc-100' : 'text-zinc-500 border-zinc-800 hover:border-zinc-700'}`}
+        {/* Center Question Tabs */}
+        <div className="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2">
+          {challenge?.questions?.map((q, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActiveQ(idx)}
+              className={`h-8 min-w-[34px] px-3 text-[11px] border transition-all ${
+                activeQ === idx
+                  ? "bg-zinc-100 text-black border-zinc-100"
+                  : "border-zinc-800 text-zinc-500 hover:text-zinc-200 hover:border-zinc-700"
+              }`}
             >
               {idx + 1}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-8">
-            <div className="flex flex-col items-end">
-                <span className="text-[9px] text-zinc-500 uppercase tracking-widest">average score</span>
-                <span className="text-sm font-mono font-medium text-emerald-400">{averageScore}<span className="text-zinc-600">/10</span></span>
+        {/* Right */}
+        <div className="flex items-center gap-6">
+          <div className="text-right hidden sm:block">
+            <div className="text-[9px] uppercase tracking-[0.18em] text-zinc-600">
+              Average
             </div>
-            <button 
-              onClick={handleFinalizeReview}
-              disabled={isSaving}
-              className="bg-zinc-100 text-zinc-950 px-6 py-1.5 rounded text-[11px] font-medium hover:bg-white transition-all disabled:opacity-30"
-            >
-              {isSaving ? 'saving...' : 'finalize review'}
-            </button>
+            <div className="text-sm font-mono text-emerald-400">
+              {averageScore}
+              <span className="text-zinc-600">/10</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleFinalizeReview}
+            disabled={isSaving}
+            className="h-9 px-5 bg-zinc-100 text-black text-[11px] font-medium hover:bg-white transition-colors disabled:opacity-40"
+          >
+            {isSaving ? "Saving..." : "Finalize Review"}
+          </button>
         </div>
       </nav>
 
       <div className="flex-1 flex overflow-hidden">
         
         {/* LEFT PANEL: AUDIT & CONTEXT */}
-        <div className="w-1/3 overflow-y-auto p-8 border-r border-zinc-800/50 custom-scrollbar bg-[#09090b]">
-          
-          {/* Score Input */}
-          <div className="mb-10 bg-zinc-900/30 border border-zinc-800/50 p-5 rounded-lg">
-              <div className="flex justify-between items-center mb-2">
-                  <span className="text-[11px] text-zinc-400 uppercase tracking-wider">q{activeQ + 1} performance</span>
-                  <div className="flex items-center gap-2">
-                      <input 
-                        type="number" 
-                        max="10" 
-                        min="0"
-                        step="0.5"
-                        value={scores[activeQ] || ""}
-                        onChange={(e) => handleScoreChange(e.target.value)}
-                        className="w-14 bg-black border border-zinc-800 rounded px-2 py-1 text-center font-mono text-emerald-400 text-sm outline-none focus:border-emerald-500/50"
-                      />
-                      <span className="text-zinc-600 font-medium text-xs">/ 10</span>
-                  </div>
-              </div>
-              <p className="text-[10px] text-zinc-500 leading-relaxed italic">
-                rate based on logic, efficiency, and edge case handling.
-              </p>
-          </div>
+        <div className="w-[34%] min-w-[360px] overflow-y-auto border-r border-zinc-800 bg-[#09090b] custom-scrollbar">
 
-          <section className="mb-12 animate-in fade-in duration-500">
-            <span className="text-[10px] text-zinc-600 uppercase tracking-widest block mb-4">problem description</span>
-            <h2 className="text-base font-medium text-zinc-100 mb-4">{currentQuestion?.title}</h2>
-            <div className="text-[13px] text-zinc-400 leading-relaxed custom-scrollbar">
-              <Markdown components={{
-                p: (props) => <p className="mb-4" {...props} />,
-                code: (props) => <code className="bg-zinc-900 border border-zinc-800 text-zinc-300 px-1 rounded font-mono text-[11px]" {...props} />
-              }}>
-                {currentQuestion?.storyline}
-              </Markdown>
-            </div>
-          </section>
+          <div className="p-6 lg:p-7 space-y-7">
 
-          <section className="space-y-6">
-             <span className="text-[10px] text-zinc-600 uppercase tracking-widest block">execution results</span>
-             
-             {/* CRITICAL FAILURE BOX */}
-             {(results?.status === "COMPILATION_ERROR" || results?.test_results?.some(r => r.status === "RUNTIME_ERROR")) && (
-                <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-md">
-                  <span className="text-red-400 text-[10px] font-medium uppercase mb-2 block tracking-wide">error traceback</span>
-                  <pre className="text-[11px] text-red-300/70 font-mono whitespace-pre-wrap leading-relaxed bg-black/20 p-3 rounded">
-                    {results?.status === "COMPILATION_ERROR" 
-                      ? results.message 
-                      : results.test_results.find(r => r.status === "RUNTIME_ERROR")?.message}
-                  </pre>
-                </div>
-             )}
-
-             {/* TEST CASE LIST */}
-             <div className="space-y-2">
-                {results?.test_results?.map((res, i) => (
-                  <div key={i} className={`p-3 rounded border ${res.passed ? 'border-emerald-500/10 bg-emerald-500/[0.02]' : 'border-red-500/10 bg-red-500/[0.02]'}`}>
-                    <div className="flex justify-between items-center">
-                      <span className={`text-[10px] font-medium uppercase ${res.passed ? 'text-emerald-500' : 'text-red-400'}`}>
-                        case {res.case}: {res.status === "RUNTIME_ERROR" ? "crash" : (res.passed ? "passed" : "failed")}
-                      </span>
+            {/* Sticky Review Score */}
+            <div className="sticky top-0 z-20 bg-[#09090b] pb-4">
+              <div className="border border-zinc-800 bg-[#0d0d10] p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                      Question {activeQ + 1}
                     </div>
-                    
-                    {!res.passed && res.status !== "RUNTIME_ERROR" && (
-                      <div className="space-y-1.5 text-[10px] font-mono border-t border-zinc-800/50 mt-2 pt-2">
-                        <div className="flex gap-2"><span className="text-zinc-600 w-10 uppercase">exp:</span> <span className="text-zinc-400 whitespace-pre-wrap">{res.expected}</span></div>
-                        <div className="flex gap-2"><span className="text-zinc-600 w-10 uppercase">act:</span> <span className="text-red-400/80 whitespace-pre-wrap">{res.actual}</span></div>
-                      </div>
-                    )}
+                    <div className="text-sm text-zinc-100 mt-1 font-medium">
+                      Review Score
+                    </div>
                   </div>
-                ))}
-             </div>
-          </section>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      value={scores[activeQ] || ""}
+                      onChange={(e) => handleScoreChange(e.target.value)}
+                      className="w-16 h-9 bg-black border border-zinc-800 px-2 text-center text-sm font-mono text-emerald-400 outline-none focus:border-emerald-500/50"
+                    />
+                    <span className="text-xs text-zinc-600">/10</span>
+                  </div>
+                </div>
+
+                <p className="mt-3 text-[10px] text-zinc-500 leading-relaxed">
+                  Score logic, correctness, readability and edge-case handling.
+                </p>
+              </div>
+            </div>
+
+            {/* Problem Meta */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-500 font-mono">
+                  {slotId}
+                </span>
+
+                <span className="text-zinc-700 text-[10px]">/</span>
+
+                <span className="text-[10px] text-zinc-400">
+                  Question {activeQ + 1}
+                </span>
+              </div>
+
+              <h2 className="text-lg font-medium text-white leading-tight">
+                {currentQuestion?.title || `Question ${activeQ + 1}`}
+              </h2>
+
+              <div className="inline-flex px-2 py-1 border border-zinc-800 text-[10px] text-zinc-400">
+                {currentQuestion?.difficulty || "Medium"}
+              </div>
+            </section>
+
+            {/* Description */}
+            <section className="space-y-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                Problem Brief
+              </div>
+
+              <div className="text-[13px] text-zinc-400 leading-7">
+                <Markdown
+                  components={{
+                    p: ({ ...props }) => (
+                      <p className="mb-4 last:mb-0" {...props} />
+                    ),
+                    code: ({ ...props }) => (
+                      <code
+                        className="bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 text-[11px] font-mono text-zinc-300"
+                        {...props}
+                      />
+                    )
+                  }}
+                >
+                  {currentQuestion?.storyline}
+                </Markdown>
+              </div>
+            </section>
+
+            {/* Judge Results */}
+            <section className="space-y-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                Execution Summary
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="border border-zinc-800 bg-[#0d0d10] px-4 py-3">
+                  <div className="text-[10px] text-zinc-500 uppercase">Passed</div>
+                  <div className="mt-1 text-sm font-medium text-emerald-400">
+                    {passedCases}
+                    <span className="text-zinc-600"> / {totalCases}</span>
+                  </div>
+                </div>
+
+                <div className="border border-zinc-800 bg-[#0d0d10] px-4 py-3">
+                  <div className="text-[10px] text-zinc-500 uppercase">Failed</div>
+                  <div className="mt-1 text-sm font-medium text-red-400">
+                    {failedCases}
+                  </div>
+                </div>
+
+                <div className="col-span-2 border border-zinc-800 bg-[#0d0d10] px-4 py-3">
+                  <div className="text-[10px] text-zinc-500 uppercase">
+                    Auto Score
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-zinc-100">
+                    {autoScore}
+                    <span className="text-zinc-600"> / 10</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
 
         {/* RIGHT PANEL: CODE & FEEDBACK */}
-        <div className="w-2/3 flex flex-col bg-[#0c0c0e]">
-          <div className="h-10 border-b border-zinc-800/50 flex items-center px-6 bg-zinc-900/20 shrink-0">
-            <span className="text-[10px] text-zinc-500 font-mono tracking-wider lowercase italic">submission_viewer.py</span>
+        <div className="flex-1 flex flex-col bg-[#0c0c0e] min-w-0">
+
+          {/* Editor Header */}
+          <div className="h-11 border-b border-zinc-800 bg-[#111114] px-6 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-zinc-700" />
+                <span className="w-2 h-2 rounded-full bg-zinc-700" />
+                <span className="w-2 h-2 rounded-full bg-zinc-700" />
+              </div>
+
+              <span className="text-[11px] text-zinc-500 font-mono truncate">
+                submission_{activeQ + 1}.py
+              </span>
+            </div>
+
+            <div className="text-[10px] text-zinc-600 uppercase tracking-[0.18em]">
+              Candidate Code
+            </div>
           </div>
-          
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-10 bg-[#0c0c0e]">
-            <pre className="font-mono text-[13px] leading-relaxed animate-in fade-in duration-700">
-              <code dangerouslySetInnerHTML={{ 
-                __html: highlight(studentCode, languages.python, 'python') 
-              }} />
+
+          {/* Code Area */}
+          <div className="flex-1 overflow-auto custom-scrollbar px-8 py-7 bg-[#0c0c0e]">
+            <pre className="font-mono text-[13px] leading-7 text-zinc-200 whitespace-pre-wrap">
+              <code
+                dangerouslySetInnerHTML={{
+                  __html: highlight(
+                    studentCode || "# No submission found.",
+                    languages.python,
+                    "python"
+                  ),
+                }}
+              />
             </pre>
           </div>
 
-          {/* FEEDBACK AREA */}
-          <div className="h-64 border-t border-zinc-800 bg-[#09090b] p-6 flex flex-col gap-3 shrink-0">
-              <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-medium">technical feedback</span>
-                  <span className="text-[10px] text-zinc-700 italic">visible to student after finalization</span>
+          {/* Feedback Panel */}
+          <div className="border-t border-zinc-800 bg-[#09090b] shrink-0">
+            <div className="px-6 pt-5 pb-3 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+                  Reviewer Feedback
+                </div>
+                <div className="text-[11px] text-zinc-500 mt-1">
+                  Visible to candidate after finalization
+                </div>
               </div>
-              <textarea 
+
+              <div className="text-[10px] text-zinc-700">
+                {feedback.length} chars
+              </div>
+            </div>
+
+            <div className="px-6 pb-6">
+              <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
-                placeholder="comments on complexity, readability, or logic improvements..."
-                className="flex-1 bg-zinc-900/30 border border-zinc-800 rounded-lg p-4 text-[13px] text-zinc-300 outline-none focus:border-zinc-600 resize-none transition-all custom-scrollbar whitespace-pre-wrap"
+                placeholder="Write concise technical feedback about logic, performance, readability, mistakes, and improvements."
+                className="w-full h-40 resize-none bg-[#0f0f12] border border-zinc-800 px-4 py-3 text-[13px] text-zinc-300 outline-none focus:border-zinc-700 custom-scrollbar leading-6"
               />
+            </div>
           </div>
         </div>
       </div>

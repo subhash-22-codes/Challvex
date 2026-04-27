@@ -1,47 +1,133 @@
+import os
+import logging
+from dotenv import load_dotenv
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
-from dotenv import load_dotenv
 
 from database import db, init_db
 from routes import challenges, submissions, auth, judge
 
+# -----------------------------------
+# LOAD ENV
+# -----------------------------------
 load_dotenv()
 
-app = FastAPI()
+# -----------------------------------
+# LOGGING
+# -----------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
-# --- CORS SETUP ---
-# Ensure this matches your frontend URL precisely
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+logger = logging.getLogger(__name__)
+
+# -----------------------------------
+# APP
+# -----------------------------------
+app = FastAPI(
+    title="Assessment Engine",
+    version="1.0.0"
+)
+
+# -----------------------------------
+# CORS
+# Supports local + deployed frontend
+# -----------------------------------
+FRONTEND_URL = os.getenv(
+    "FRONTEND_URL",
+    "http://localhost:5173"
+)
+
+allowed_origins = [
+    "http://localhost:5173",
+    FRONTEND_URL
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"], 
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- REGISTER ROUTES ---
-# All coding judge routes will be prefixed with /api
-app.include_router(challenges.router, prefix="/api", tags=["Challenges"])
-app.include_router(submissions.router, prefix="/api", tags=["Submissions"])
-app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
-app.include_router(judge.router, prefix="/api", tags=["Judge"]) # NEW
+# -----------------------------------
+# ROUTES
+# -----------------------------------
+app.include_router(
+    challenges.router,
+    prefix="/api",
+    tags=["Challenges"]
+)
 
+app.include_router(
+    submissions.router,
+    prefix="/api",
+    tags=["Submissions"]
+)
+
+app.include_router(
+    auth.router,
+    prefix="/api/auth",
+    tags=["Auth"]
+)
+
+app.include_router(
+    judge.router,
+    prefix="/api",
+    tags=["Judge"]
+)
+
+# -----------------------------------
+# STARTUP
+# -----------------------------------
 @app.on_event("startup")
-async def startup_db_client():
+async def startup_event():
+    logger.info("Starting backend...")
     await init_db()
-    
+    logger.info("Backend startup complete")
+
+# -----------------------------------
+# ROOT
+# -----------------------------------
 @app.get("/")
 async def root():
-    return {"message": "Assessment Engine is Online. Ready to execute code."}
+    return {
+        "message": "Assessment Engine is Online"
+    }
 
+# -----------------------------------
+# HEALTH CHECK
+# -----------------------------------
+@app.get("/health")
+async def health():
+    try:
+        await db.command("ping")
+        return {
+            "status": "ok",
+            "database": "connected"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "database": str(e)
+        }
+
+# -----------------------------------
+# DEV DB TEST
+# -----------------------------------
 @app.get("/test-db")
 async def test_db():
     try:
-        # Check MongoDB connection
         await db.command("ping")
-        return {"status": "Success", "message": "Connected to MongoDB!"}
+        return {
+            "status": "success",
+            "message": "Connected to MongoDB"
+        }
     except Exception as e:
-        return {"status": "Failed", "error": str(e)}
+        return {
+            "status": "failed",
+            "error": str(e)
+        }

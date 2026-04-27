@@ -48,6 +48,30 @@ export default function StudentArena() {
   const isDiscarding = useRef(false);
   const DRAFT_KEY = useMemo(() => `arena_draft_slot_${slotId}`, [slotId]);
 
+  // Add this with your other state declarations
+const [terminalHeight, setTerminalHeight] = useState(300);
+
+// Add this function before your return statement
+const handleTerminalResize = (e) => {
+  const startY = e.clientY;
+  const startHeight = terminalHeight;
+
+  const onMouseMove = (moveEvent) => {
+    // We subtract moveEvent.clientY because the terminal grows upwards
+    const delta = startY - moveEvent.clientY;
+    const newHeight = Math.min(window.innerHeight * 0.8, Math.max(150, startHeight + delta));
+    setTerminalHeight(newHeight);
+  };
+
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  };
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+};
+
   const getBoilerplate = useCallback((language) => {
   if (language === 'python') {
     return `# Write your code here\n# Use input() to read data\n\ndef solve():\n    pass\n\nif __name__ == "__main__":\n    solve()`;
@@ -263,7 +287,8 @@ const confirmSubmit = async () => {
     // CHANGE: Changed day_number to slot_id
     await saveSubmission({ 
       slot_id: slotId, 
-      answers: finalAnswers, 
+      answers: finalAnswers,
+      languages: langPref, 
       status: "pending" 
     });
     localStorage.removeItem(DRAFT_KEY);
@@ -292,17 +317,28 @@ const confirmSubmit = async () => {
       
       {/* 1. START OVERLAY */}
       {!timerActive && !isViewOnly && !submission?.start_time && (
-        <div className="absolute inset-0 z-[250] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="bg-[#0c0c0e] border border-zinc-800 p-10 rounded-xl max-w-sm w-full text-center shadow-2xl animate-in fade-in duration-300">
-            <h2 className="text-lg font-medium text-zinc-100 mb-2">{challenge?.title}</h2>
-            <p className="text-xs text-zinc-500 mb-8">Time limit: {challenge?.total_time} minutes</p>
-            <button onClick={startSession} className="w-full py-2.5 bg-zinc-100 text-zinc-950 font-medium rounded-md hover:bg-white transition-colors text-xs">
+        <div className="absolute inset-0 z-[250] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-[#0c0c0e] border border-zinc-800 p-12 rounded-none max-w-sm w-full text-center shadow-2xl animate-in fade-in zoom-in-95 duration-500">
+            
+            <div className="space-y-1 mb-10">
+              <h2 className="text-base font-medium text-white tracking-tight">
+                {challenge?.title}
+              </h2>
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                You will have {challenge?.total_time} minutes to complete this challenge.
+              </p>
+            </div>
+
+            <button 
+              onClick={startSession} 
+              className="w-full py-3 bg-zinc-100 text-zinc-950 text-[11px] font-medium hover:bg-white transition-colors rounded-none"
+            >
               Start assessment
             </button>
+            
           </div>
         </div>
       )}
-
       {/* 2. NAVIGATION */}
       <nav className="h-14 border-b border-zinc-800/50 flex items-center px-6 shrink-0 bg-[#09090b] justify-between z-[100]">
         <div className="flex items-center gap-4 w-1/3">
@@ -313,9 +349,8 @@ const confirmSubmit = async () => {
           <span className="text-[11px] font-medium text-zinc-100 truncate">{challenge?.title}</span>
         </div>
 
-        <div className="flex items-center justify-center gap-2.5 w-1/3">
+        <div className="flex items-center gap-1.5">
           {challenge?.questions.map((_, idx) => {
-            // 1. Is there code saved for this index?
             const isSaved = Object.prototype.hasOwnProperty.call(answers, idx) && answers[idx]?.trim() !== "";
             const isActive = activeQ === idx;
 
@@ -323,14 +358,12 @@ const confirmSubmit = async () => {
               <button 
                 key={idx} 
                 onClick={() => handleQuestionSwitch(idx)} 
-                className={`w-7 h-7 rounded text-[10px] font-mono transition-all duration-300 border ${
+                className={`w-6 h-6 rounded-none text-[10px] font-medium transition-all border ${
                   isActive
-                    ? isSaved
-                      ? 'bg-emerald-400 text-zinc-950 border-emerald-400 font-medium scale-110 shadow-[0_0_15px_rgba(52,211,153,0.3)]' // Active + Saved (Solid Green)
-                      : 'bg-zinc-100 text-zinc-950 border-zinc-100 font-medium scale-110 shadow-sm' // Active + Unsaved (White)
+                    ? 'bg-zinc-100 text-zinc-950 border-zinc-100' // Current
                     : isSaved
-                      ? 'bg-emerald-400/10 text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/20' // Not Active + Saved (Ghost Green)
-                      : 'text-zinc-500 border-zinc-800 hover:border-zinc-600 bg-transparent' // Not Active + Unsaved (Gray)
+                      ? 'bg-zinc-800 text-zinc-200 border-zinc-700' // Finished
+                      : 'text-zinc-600 border-zinc-800 hover:border-zinc-700' // Pending
                 }`}
               >
                 {idx + 1}
@@ -353,254 +386,379 @@ const confirmSubmit = async () => {
       </nav>
 
       {/* 3. WORKSPACE */}
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* LEFT: CONTEXT */}
-        <div className="w-1/2 overflow-y-auto p-8 lg:p-12 border-r border-zinc-800/50 custom-scrollbar bg-[#09090b]">
-          <div className="max-w-2xl mx-auto animate-in fade-in duration-500">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-[10px] text-zinc-500 font-medium">Question {activeQ + 1}</span>
-              <span className="text-[10px] text-zinc-700">•</span>
-              <span className={`text-[10px] font-medium ${challenge?.questions[activeQ].difficulty === 'Hard' ? 'text-red-400' : 'text-emerald-400'}`}>
+     <div className="flex-1 flex overflow-hidden">
+  
+      {/* Left: Problem specification */}
+      <div className="w-1/2 overflow-y-auto p-8 lg:p-12 border-r border-zinc-800 bg-[#09090b] custom-scrollbar">
+        <div className="max-w-2xl mx-auto space-y-10 animate-in fade-in slide-in-from-left-4 duration-600">
+          
+          {/* Breadcrumb & Navigation */}
+          <nav className="-mt-2 mb-1 flex items-center gap-2">
+            <span className="text-[10px] text-zinc-400 font-medium tracking-wide">
+              Question {activeQ + 1}
+            </span>
+          </nav>
+
+          {/* Header section */}
+          <header className="mb-3 space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <div
+                className={`px-2 py-0.5 text-[9px] font-bold border tracking-widest ${
+                  challenge?.questions[activeQ].difficulty === "Hard"
+                    ? "border-red-900/50 text-red-500 bg-red-500/5"
+                    : "border-emerald-900/50 text-emerald-500 bg-emerald-500/5"
+                }`}
+              >
                 {challenge?.questions[activeQ].difficulty}
+              </div>
+
+              <span className="text-[10px] text-zinc-500 italic leading-none">
+                Estimated time: {challenge?.total_time} minutes
               </span>
             </div>
-            <h2 className="text-xl font-medium text-zinc-100 mb-6 tracking-tight">{challenge?.questions[activeQ].title}</h2>
-            
-            <div className="text-[13px] text-zinc-400 leading-relaxed mb-12">
-              <Markdown components={{ 
-                  p: ({node, ...props}) => <p className="mb-4 whitespace-pre-wrap" {...props} />,
-                  code: ({node, inline, ...props}) => <code className="bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded text-zinc-300 font-mono text-[11px]" {...props} />
-              }}>{challenge?.questions[activeQ].storyline}</Markdown>
-            </div>
 
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-2">
-                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Input format</span>
-                  <div className="text-[11px] text-zinc-400 bg-zinc-900/30 p-4 border border-zinc-800/50 rounded-md font-mono whitespace-pre-wrap">{challenge?.questions[activeQ].input_format}</div>
+            <h1 className="text-2xl font-medium text-white tracking-tight leading-snug">
+              {challenge?.questions[activeQ].title}
+            </h1>
+          </header>
+
+          {/* Problem storyline */}
+          <article className="max-w-none text-[13px] text-zinc-300 prose prose-invert prose-p:my-0 prose-li:my-0">
+            <Markdown
+              components={{
+                p: ({ node, ...props }) => (
+                  <p className="mb-2 leading-6" {...props} />
+                ),
+
+                h2: ({ node, ...props }) => (
+                  <h2 className="mt-5 mb-2 text-sm font-semibold text-white" {...props} />
+                ),
+
+                h3: ({ node, ...props }) => (
+                  <h3 className="mt-4 mb-2 text-sm font-semibold text-white" {...props} />
+                ),
+
+                ul: ({ node, ...props }) => (
+                  <ul className="mb-2 list-disc pl-5 space-y-0" {...props} />
+                ),
+
+                ol: ({ node, ...props }) => (
+                  <ol className="mb-2 list-decimal pl-5 space-y-0" {...props} />
+                ),
+
+                li: ({ node, ...props }) => (
+                  <li className="leading-6" {...props} />
+                ),
+
+                pre: ({ node, ...props }) => (
+                  <pre className="my-3 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3" {...props} />
+                ),
+
+                code: ({ node, children, ...props }) => (
+                  <code
+                    className="rounded bg-zinc-800/80 px-1 py-0.5 text-[11px] text-zinc-200 font-mono"
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                ),
+              }}
+            >
+              {challenge?.questions[activeQ].storyline}
+            </Markdown>
+          </article>
+
+          {/* Technical specifications */}
+          <section className="space-y-8">
+            <div className="grid grid-cols-1 gap-5">
+              {[
+                { label: "Input format", content: challenge?.questions[activeQ].input_format },
+                { label: "Output format", content: challenge?.questions[activeQ].output_format },
+                { label: "Constraints", content: challenge?.questions[activeQ].constraints },
+              ].map((item) => (
+                <div key={item.label} className="space-y-2">
+                  <h3 className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                    {item.label}
+                  </h3>
+
+                  <pre className="overflow-x-auto border border-zinc-800 bg-zinc-900/30 px-4 py-3 text-[11px] leading-4 text-zinc-300 font-mono whitespace-pre-wrap">
+                    {item.content?.trim()?.replace(/\n{3,}/g, "\n\n") || ""}
+                  </pre>
                 </div>
-                <div className="space-y-2">
-                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Output format</span>
-                  <div className="text-[11px] text-zinc-400 bg-zinc-900/30 p-4 border border-zinc-800/50 rounded-md font-mono whitespace-pre-wrap">{challenge?.questions[activeQ].output_format}</div>
-                </div>
-                <div className="space-y-2">
-                  <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Constraints</span>
-                  <div className="text-[11px] text-zinc-400 bg-zinc-900/30 p-4 border border-zinc-800/50 rounded-md font-mono whitespace-pre-wrap">{challenge?.questions[activeQ].constraints}</div>
-                </div>
-              </div>
-              
-              <div className="space-y-4 pt-4 pb-12">
-                <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Examples</span>
+              ))}
+            </div>
+            
+            {/* Examples section */}
+            <div className="space-y-5 pt-2">
+              <h3 className="text-[11px] font-medium text-zinc-500">Examples</h3>
+              <div className="space-y-4">
                 {challenge?.questions[activeQ].samples.map((s, i) => (
-                  <div key={i} className="border border-zinc-800 rounded-md bg-zinc-900/10 overflow-hidden">
+                  <div key={i} className="border border-zinc-800 rounded-none bg-zinc-900/10 overflow-hidden">
                     <div className="grid grid-cols-2 divide-x divide-zinc-800 border-b border-zinc-800">
                       <div className="p-4">
-                        <span className="text-[10px] text-zinc-600 block mb-2">Input</span>
+                        <span className="text-[10px] text-zinc-600 font-medium block mb-2">Input</span>
                         <pre className="text-[11px] font-mono text-zinc-300 whitespace-pre-wrap">{s.input_data}</pre>
                       </div>
                       <div className="p-4">
-                        <span className="text-[10px] text-zinc-600 block mb-2">Output</span>
-                        <pre className="text-[11px] font-mono text-zinc-300 whitespace-pre-wrap">{s.output_data}</pre>
+                        <span className="text-[10px] text-zinc-600 font-medium block mb-2">Output</span>
+                        <pre className="text-[11px] font-mono text-zinc-100 whitespace-pre-wrap">{s.output_data}</pre>
                       </div>
                     </div>
                     {s.explanation && (
-                      <div className="p-4 text-xs text-zinc-500 italic bg-zinc-900/20 whitespace-pre-wrap">
-                        {s.explanation}
+                      <div className="p-4 bg-zinc-950/40 border-t border-zinc-800/50">
+                        <span className="text-[10px] text-zinc-600 font-medium block mb-1">Explanation</span>
+                        <div className="text-[11px] text-zinc-400 italic leading-relaxed whitespace-pre-wrap">
+                          {s.explanation}
+                        </div>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* RIGHT: COMPILER */}
-        <div className="w-1/2 flex flex-col bg-[#0c0c0e] relative h-full">
-          
-          <div className="h-10 border-b border-zinc-800/50 flex items-center justify-between px-4 bg-zinc-900/20 shrink-0">
-             <span className="text-[10px] text-zinc-500 font-mono tracking-wider">
-               solution.{langPref[activeQ] === 'python' ? 'py' : 'java'}
-             </span>
-             <select 
-              value={langPref[activeQ] || 'python'} 
-              onChange={(e) => {
-                const newLang = e.target.value;
-                const oldLang = langPref[activeQ] || 'python';
-                const oldBoilerplate = getBoilerplate(oldLang);
-
-                // 1. Update the language preference
-                setLangPref({...langPref, [activeQ]: newLang});
-
-                // 2. SAFETY CHECK: Only overwrite if they haven't written real code yet
-                if (currentCode.trim() === "" || currentCode.trim() === oldBoilerplate.trim()) {
-                  setCurrentCode(getBoilerplate(newLang));
-                }
-                
-                setTestResults(null); // Clear old results to avoid confusion
-              }} 
-              disabled={isViewOnly || !timerActive} 
-              className="bg-transparent text-[10px] text-zinc-500 hover:text-zinc-100 outline-none cursor-pointer disabled:opacity-50 transition-colors"
-            >
-              <option value="python">Python</option>
-              <option value="java">Java</option>
-            </select>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#0c0c0e]">
-             <Editor
-                value={currentCode}
-                onValueChange={code => setCurrentCode(code)}
-                // DYNAMIC HIGHLIGHTING: 
-                highlight={code => highlight(
-                  code, 
-                  langPref[activeQ] === 'java' ? languages.java : languages.python
-                )}
-                padding={20}
-                disabled={isViewOnly || !timerActive}
-                className="font-mono text-sm min-h-full"
-                style={{
-                  fontFamily: '"Fira Code", "Fira Mono", monospace',
-                  fontSize: 13,
-                }}
-              />
-          </div>
-
-          {/* TERMINAL OVERLAY */}
-          {terminalOpen && (
-            <div className="absolute bottom-14 left-0 right-0 h-[45%] bg-[#09090b] border-t border-zinc-800 z-50 flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200">
-               <div className="h-9 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/30">
-                  <span className="text-[10px] font-medium text-zinc-400">Console</span>
-                  <button onClick={() => setTerminalOpen(false)} className="text-zinc-500 hover:text-zinc-100 text-lg transition-colors">&times;</button>
-               </div>
-               
-               <div className="flex-1 overflow-y-auto p-6 font-mono text-[11px] space-y-4 custom-scrollbar">
-                  {isExecuting ? (
-                    <div className="text-zinc-500 animate-pulse text-center mt-10">running code...</div>
-                  ) : (
-                    <>
-                      {(testResults?.status === "COMPILATION_ERROR" || testResults?.test_results?.some(r => r.status === "RUNTIME_ERROR")) && (
-                        <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-md mb-4">
-                           <span className="text-red-400 font-medium block mb-2">Execution error</span>
-                           <pre className="text-zinc-400 whitespace-pre-wrap">
-                             {testResults?.status === "COMPILATION_ERROR" 
-                               ? testResults.message 
-                               : testResults.test_results.find(r => r.status === "RUNTIME_ERROR")?.message}
-                           </pre>
-                        </div>
-                      )}
-
-                      {testResults?.test_results && (
-                        <div className="space-y-3 pb-8">
-                           {testResults.test_results.map((res, i) => (
-                             <div key={i} className="p-4 rounded-md border border-zinc-800 bg-zinc-900/20">
-                                <div className="flex justify-between items-start">
-                                   <div className="space-y-1">
-                                      <span className={`text-xs font-medium ${res.passed ? 'text-emerald-500' : 'text-red-500'}`}>
-                                        Test case {res.case}: {res.status === "RUNTIME_ERROR" ? 'Error' : (res.passed ? 'Passed' : 'Failed')}
-                                      </span>
-                                      <div className="text-[10px] text-zinc-500">{res.is_public ? 'Public test' : 'Hidden test'}</div>
-                                   </div>
-                                </div>
-                                
-                                {res.is_public && !res.passed && res.status !== "RUNTIME_ERROR" && (
-                                  <div className="grid grid-cols-1 gap-2 border-t border-zinc-800/50 pt-3 mt-3 text-zinc-400">
-                                    <div><span className="text-zinc-500">Input:</span> <span className="whitespace-pre-wrap">{res.input}</span></div>
-                                    <div><span className="text-zinc-500">Expected:</span> <span className="whitespace-pre-wrap text-emerald-500/70">{res.expected}</span></div>
-                                    <div><span className="text-zinc-500">Actual:</span> <span className="whitespace-pre-wrap text-red-400">{res.actual}</span></div>
-                                  </div>
-                                )}
-                                
-                                {!res.is_public && !res.passed && (
-                                   <div className="text-[10px] text-zinc-500 italic mt-2">
-                                      Hidden test failed. Check edge cases.
-                                   </div>
-                                )}
-                             </div>
-                           ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-               </div>
-            </div>
-          )}
-
-          {/* ACTION FOOTER */}
-          <div className="h-14 border-t border-zinc-800/50 flex items-center justify-between px-6 bg-[#09090b] shrink-0 z-[60]">
-             {!isViewOnly ? (
-               <>
-                <button 
-                  onClick={handleRunCode} 
-                  disabled={isExecuting || !timerActive} 
-                  className="text-[11px] font-medium text-zinc-400 hover:text-zinc-100 transition-colors disabled:opacity-50"
-                >
-                  {isExecuting ? 'running...' : 'run code'}
-                </button>
-
-                <div className="flex items-center gap-3">
-                   <button 
-                     onClick={handleSaveQuestion} 
-                     disabled={!timerActive}
-                     className={`text-[11px] font-medium px-4 py-1.5 rounded transition-all duration-300 disabled:opacity-30 ${
-                       saveStatus 
-                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/50' 
-                        : 'text-zinc-400 border border-zinc-800 hover:bg-zinc-800 hover:text-zinc-100'
-                     }`}
-                   >
-                     {saveStatus ? 'saved' : 'save code'}
-                   </button>
-                   <button 
-                     onClick={() => setShowSubmitModal(true)} 
-                     disabled={!timerActive}
-                     className="bg-zinc-100 text-zinc-950 hover:bg-white text-[11px] font-medium px-5 py-1.5 rounded transition-colors disabled:opacity-30"
-                   >
-                     submit
-                   </button>
-                </div>
-               </>
-              ) : (
-                <div className="w-full flex items-center justify-between">
-                  <div className="flex items-center gap-6">
-                    {/* 1. The Score Badge */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">Result</span>
-                      <span className={`text-xs font-mono px-2 py-0.5 rounded ${
-                        submission?.status === 'reviewed' 
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                          : 'bg-zinc-800 text-zinc-400'
-                      }`}>
-                        {submission?.status === 'reviewed' 
-                          ? `${submission.average_score}/10` 
-                          : 'Pending Review'}
-                      </span>
-                    </div>
-                    {submission?.feedback && (
-                      <div className="flex items-center gap-2 border-l border-zinc-800 pl-6">
-                        <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">Feedback</span>
-                        <button 
-                          onClick={() => setShowFeedbackModal(true)}
-                          className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors underline underline-offset-4 decoration-emerald-500/30"
-                        >
-                          Read Professor&apos;s Note
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 3. The Navigation Button */}
-                  <button 
-                    onClick={() => navigate("/")} 
-                    className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors bg-zinc-800/50 px-3 py-1 rounded border border-zinc-700/50"
-                  >
-                    return to dashboard
-                  </button>
-                </div>
-              )}
-          </div>
+          </section>
         </div>
       </div>
+
+      {/* Right: Code editor & execution */}
+      <div className="w-1/2 flex flex-col bg-[#0c0c0e] relative h-full">
+        
+        {/* Editor toolbar */}
+        <div className="h-10 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/20 shrink-0">
+          <span className="text-[10px] text-zinc-500 font-mono tracking-wider">
+            solution.{langPref[activeQ] === 'python' ? 'py' : 'java'}
+          </span>
+          <select 
+            value={langPref[activeQ] || 'python'} 
+            onChange={(e) => {
+              const newLang = e.target.value;
+              const oldLang = langPref[activeQ] || 'python';
+              const oldBoilerplate = getBoilerplate(oldLang);
+              setLangPref({...langPref, [activeQ]: newLang});
+              if (currentCode.trim() === "" || currentCode.trim() === oldBoilerplate.trim()) {
+                setCurrentCode(getBoilerplate(newLang));
+              }
+              setTestResults(null);
+            }} 
+            disabled={isViewOnly || !timerActive} 
+            className="bg-transparent text-[10px] text-zinc-500 hover:text-zinc-100 outline-none cursor-pointer disabled:opacity-50 transition-colors"
+          >
+            <option value="python" className="bg-[#0c0c0e]">Python</option>
+            <option value="java" className="bg-[#0c0c0e]">Java</option>
+          </select>
+        </div>
+
+        {/* Editor workspace */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#0c0c0e]">
+          <Editor
+              value={currentCode}
+              onValueChange={code => setCurrentCode(code)}
+              highlight={code => highlight(
+                code, 
+                langPref[activeQ] === 'java' ? languages.java : languages.python
+              )}
+              padding={24}
+              disabled={isViewOnly || !timerActive}
+              className="font-mono text-sm min-h-full"
+              style={{
+                fontFamily: '"Fira Code", monospace',
+                fontSize: 13,
+              }}
+            />
+        </div>
+
+        {/* Terminal / Console Overlay */}
+        {terminalOpen && (
+          <div 
+            style={{ height: terminalHeight || '300px' }} // Dynamic height from state
+            className="absolute bottom-14 left-0 right-0 bg-[#09090b] border-t border-zinc-700 z-50 flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200"
+          >
+            {/* Resizer handle: Grab this to stretch/shrink */}
+            <div 
+              onMouseDown={handleTerminalResize} // Logic to handle the drag
+              className="h-1 cursor-row-resize hover:bg-zinc-500/30 transition-colors shrink-0" 
+            />
+
+            {/* Console header */}
+            <div className="h-9 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-950 shrink-0">
+              <span className="text-[10px] font-medium text-zinc-400">Terminal output</span>
+              <button 
+                onClick={() => setTerminalOpen(false)} 
+                className="text-zinc-500 hover:text-zinc-100 text-lg transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 font-mono text-[11px] custom-scrollbar bg-[#09090b]">
+              {isExecuting ? (
+                <div className="text-zinc-600 italic text-center mt-10">Initializing execution environment...</div>
+              ) : (
+                <div className="space-y-6 max-w-3xl">
+                  {/* Error handling */}
+                  {(testResults?.status === "COMPILATION_ERROR" || testResults?.test_results?.some(r => r.status === "RUNTIME_ERROR")) && (
+                    <div className="bg-red-500/5 border border-red-900/30 p-4 rounded-none">
+                      <span className="text-red-500 font-bold text-[10px] block mb-2">Execution error</span>
+                      <pre className="text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                        {testResults?.status === "COMPILATION_ERROR" 
+                          ? testResults.message 
+                          : testResults.test_results.find(r => r.status === "RUNTIME_ERROR")?.message}
+                      </pre>
+                    </div>
+                  )}
+
+                  {testResults?.test_results && (() => {
+                    const results = testResults.test_results;
+                    const totalCases = results.length;
+                    const passedCases = results.filter(item => item.passed).length;
+                    const hiddenFailed = results.filter(item => !item.is_public && !item.passed).length;
+                    const publicResults = results.filter(item => item.is_public);
+
+                    return (
+                      <div className="space-y-6">
+                        {/* Summary metrics */}
+                        <div className="border border-zinc-800 bg-zinc-900/30 p-4 flex items-center justify-between rounded-none">
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-medium text-white">Test results summary</p>
+                            <p className="text-[10px] text-zinc-500">Passed {passedCases} out of {totalCases} test cases</p>
+                          </div>
+                          {hiddenFailed > 0 && (
+                            <span className="text-[10px] font-medium text-amber-500 bg-amber-500/5 border border-amber-900/30 px-2 py-0.5">
+                              {hiddenFailed} hidden case{hiddenFailed > 1 ? "s" : ""} failed
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Case list */}
+                        <div className="space-y-3">
+                          {publicResults.map((res, i) => {
+                            const displayStatus = res.status 
+                              ? res.status.replace('_', ' ') 
+                              : (res.passed ? "Passed" : "Failed");
+
+                            return (
+                              <div key={i} className="border border-zinc-800 bg-zinc-950 p-4 space-y-4 rounded-none">
+                                <div className="flex items-start justify-between">
+                                  <div className="space-y-0.5">
+                                    <p className={`text-[11px] font-bold ${res.passed ? "text-emerald-500" : "text-red-500"}`}>
+                                      Case 0{res.case}
+                                    </p>
+                                    <p className="text-[10px] text-zinc-600 italic font-sans">Public test case</p>
+                                  </div>
+                                  <span className={`px-2 py-0.5 text-[9px] font-bold border rounded-none ${
+                                    res.passed 
+                                      ? "border-emerald-900/30 text-emerald-500 bg-emerald-500/5" 
+                                      : "border-red-900/30 text-red-500 bg-red-500/5"
+                                  }`}>
+                                    {displayStatus}
+                                  </span>
+                                </div>
+
+                                {res.status !== "RUNTIME_ERROR" && res.status !== "TIMEOUT" && (
+                                  <div className="grid grid-cols-1 gap-4 pt-3 border-t border-zinc-900 text-[10px] font-mono leading-relaxed">
+                                    <div className="space-y-1">
+                                      <span className="text-zinc-600 block">Input</span>
+                                      <pre className="whitespace-pre-wrap text-zinc-400">{res.input}</pre>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-1">
+                                        <span className="text-zinc-600 block">Expected</span>
+                                        <pre className="whitespace-pre-wrap text-zinc-500">{res.expected}</pre>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <span className="text-zinc-600 block">Actual</span>
+                                        <pre className={`whitespace-pre-wrap ${res.passed ? "text-emerald-400" : "text-red-400"}`}>
+                                          {res.actual}
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Global action footer */}
+        <footer className="h-14 border-t border-zinc-800 flex items-center justify-between px-6 bg-[#09090b] shrink-0 z-[60]">
+          {!isViewOnly ? (
+            <>
+              <button 
+                onClick={handleRunCode} 
+                disabled={isExecuting || !timerActive} 
+                className="text-[11px] font-medium text-zinc-500 hover:text-zinc-100 transition-colors disabled:opacity-30"
+              >
+                {isExecuting ? 'Running...' : 'Run code'}
+              </button>
+
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={handleSaveQuestion} 
+                  disabled={!timerActive}
+                  className={`text-[11px] font-medium px-4 py-1.5 rounded-none transition-all duration-300 disabled:opacity-30 border ${
+                    saveStatus 
+                      ? 'bg-emerald-500/5 text-emerald-500 border-emerald-900/50' 
+                      : 'text-zinc-400 border-zinc-800 hover:bg-zinc-900 hover:text-zinc-100'
+                  }`}
+                >
+                  {saveStatus ? 'Saved' : 'Save code'}
+                </button>
+                <button 
+                  onClick={() => setShowSubmitModal(true)} 
+                  disabled={!timerActive}
+                  className="bg-zinc-100 text-zinc-950 hover:bg-white text-[11px] font-medium px-5 py-1.5 rounded-none transition-colors disabled:opacity-30"
+                >
+                  Submit
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="w-full flex items-center justify-between">
+              <div className="flex items-center gap-8">
+                <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-zinc-500 font-medium">Result</span>
+                  <span className={`text-[11px] font-mono px-3 py-0.5 border rounded-none ${
+                    submission?.status === 'reviewed' 
+                      ? 'border-emerald-900/30 text-emerald-400 bg-emerald-500/5' 
+                      : 'bg-zinc-900 border-zinc-800 text-zinc-500'
+                  }`}>
+                    {submission?.status === 'reviewed' 
+                      ? `${submission.average_score} / 10` 
+                      : 'Awaiting review'}
+                  </span>
+                </div>
+                {submission?.feedback && (
+                  <div className="flex items-center gap-3 border-l border-zinc-800 pl-8">
+                    <span className="text-[11px] text-zinc-500 font-medium">Feedback</span>
+                    <button 
+                      onClick={() => setShowFeedbackModal(true)}
+                      className="text-[11px] text-zinc-300 hover:text-white transition-colors underline underline-offset-4 decoration-zinc-800"
+                    >
+                      Read notes
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <button 
+                onClick={() => navigate("/")} 
+                className="text-[11px] font-medium text-zinc-500 hover:text-white bg-zinc-900 px-4 py-1.5 border border-zinc-800 rounded-none"
+              >
+                Return to home
+              </button>
+            </div>
+          )}
+        </footer>
+      </div>
+    </div>
 
       {/* SUBMIT MODAL */}
       {showSubmitModal && (
@@ -635,34 +793,45 @@ const confirmSubmit = async () => {
           </div>
         </div>
       )}
-
       {showFeedbackModal && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-200">
-          <div className="bg-[#0c0c0e] border border-zinc-800 rounded-lg max-w-2xl w-full shadow-2xl flex flex-col max-h-[80vh]">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
-              <h3 className="text-sm font-medium text-zinc-100">Review Feedback</h3>
-              <span className="text-xs font-mono bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
-                Score: {submission?.average_score}/10
-              </span>
+          <div className="bg-[#0c0c0e] border border-zinc-800 rounded-none max-w-2xl w-full shadow-2xl flex flex-col max-h-[80vh]">
+            
+            {/* Modal header */}
+            <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/20">
+              <h3 className="text-[13px] font-medium text-zinc-100">
+                Evaluation notes
+              </h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-500 font-medium">Grade:</span>
+                <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/5 px-2 py-0.5 border border-emerald-900/30">
+                  {submission?.average_score}/10
+                </span>
+              </div>
             </div>
 
-            {/* Modal Body - This part scrolls if the text is 20 lines! */}
-            <div className="p-6 overflow-y-auto custom-scrollbar">
-              <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap font-mono">
-                {submission?.feedback}
-              </p>
+            {/* Modal body */}
+            <div className="p-8 overflow-y-auto custom-scrollbar">
+              <div className="space-y-4">
+                <label className="text-[10px] text-zinc-500 font-medium uppercase tracking-tight">
+                  Feedback
+                </label>
+                <p className="text-[12px] text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
+                  {submission?.feedback}
+                </p>
+              </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-zinc-800 flex justify-end">
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-zinc-800 flex justify-end bg-zinc-900/10">
               <button 
                 onClick={() => setShowFeedbackModal(false)} 
-                className="px-4 py-2 text-xs font-medium bg-zinc-100 text-zinc-950 rounded hover:bg-white transition-colors"
+                className="px-6 py-2 text-[11px] font-medium bg-zinc-100 text-zinc-950 rounded-none hover:bg-white transition-colors"
               >
                 Close
               </button>
             </div>
+            
           </div>
         </div>
       )}

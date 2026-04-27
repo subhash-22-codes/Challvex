@@ -53,18 +53,36 @@ class DailyChallenge(BaseModel):
     
 class Submission(BaseModel):
     slot_id: str
-    student_role: str = "student" 
-    answers: Dict[str, str] 
-    student_id: Optional[str] = None                                  
+    student_role: str = "student"
+    answers: Dict[str, str]
+    languages: Dict[str, str] = Field(default_factory=dict)
+
+    student_id: Optional[str] = None
     username: Optional[str] = None
-    status: str = "pending"     
-    start_time: Optional[datetime] = None  
+    status: str = "pending"
+    start_time: Optional[datetime] = None
     submitted_at: datetime = Field(default_factory=datetime.utcnow)
+
     results: Dict[str, dict] = Field(default_factory=dict)
-    feedback: Optional[str] = "" 
+    feedback: Optional[str] = ""
     individual_scores: Dict[str, float] = Field(default_factory=dict)
     average_score: float = 0.0
 
     class Config:
         from_attributes = True
+        
+class SampleCase(BaseModel):
+    input_data: str
+    output_data: str
+    explanation: Optional[str] = None
+
+
+class ExecutionRequest(BaseModel):
+    code: str
+    language: str
+    slot_id: Optional[str] = None
+    question_index: Optional[int] = None
+    samples: Optional[List[SampleCase]] = None
+    private_samples: Optional[List[SampleCase]] = None
+    time_limit: Optional[int] = 2
         

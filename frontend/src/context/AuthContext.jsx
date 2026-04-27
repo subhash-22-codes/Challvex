@@ -1,50 +1,132 @@
 /* eslint-disable react/prop-types */
-import { createContext, useContext, useState, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect
+} from "react";
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(
+      atob(token.split(".")[1])
+    );
 
-  useEffect(() => {
-    // 1. On every page load/refresh, check if a session exists
-    const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    
-    if (savedUser && token) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error("Failed to parse user data from localStorage", e);
-        // If data is corrupted, clear it
-        localStorage.clear();
-      }
-    }
-    setLoading(false);
-  }, []);
+    const now = Math.floor(
+      Date.now() / 1000
+    );
 
-  // 2. The Login Handler: Stores data and updates the state
-  const login = (userData, token) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-  };
+    return payload.exp < now;
+  } catch {
+    return true;
+  }
+}
 
-  // 3. The Logout Handler: Full system wipe
-  // 3. The Logout Handler: Pure state wipe (Mobile Safe)
+export const AuthProvider = ({
+  children
+}) => {
+  const [user, setUser] =
+    useState(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
   const logout = () => {
-    localStorage.removeItem('token');  
+    localStorage.removeItem(
+      "token"
+    );
+    localStorage.removeItem(
+      "user"
+    );
+
     setUser(null);
   };
 
+  const login = (
+    userData,
+    token
+  ) => {
+    localStorage.setItem(
+      "token",
+      token
+    );
+
+    localStorage.setItem(
+      "user",
+      JSON.stringify(
+        userData
+      )
+    );
+
+    setUser(userData);
+  };
+
+  useEffect(() => {
+    const savedUser =
+      localStorage.getItem(
+        "user"
+      );
+
+    const token =
+      localStorage.getItem(
+        "token"
+      );
+
+    if (savedUser && token) {
+      if (
+        isTokenExpired(token)
+      ) {
+        logout();
+      } else {
+        try {
+          setUser(
+            JSON.parse(
+              savedUser
+            )
+          );
+        } catch {
+          logout();
+        }
+      }
+    }
+
+    setLoading(false);
+  }, []);
+
+  /* Listen global logout event */
+  useEffect(() => {
+    const handleLogout = () =>
+      logout();
+
+    window.addEventListener(
+      "auth-logout",
+      handleLogout
+    );
+
+    return () => {
+      window.removeEventListener(
+        "auth-logout",
+        handleLogout
+      );
+    };
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {/* Don't render the app until we've checked if the user is logged in */}
-      {!loading && children}
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        loading
+      }}
+    >
+      {!loading &&
+        children}
     </AuthContext.Provider>
   );
 };
 
-// Hook for easy access in any component
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () =>
+  useContext(AuthContext);
