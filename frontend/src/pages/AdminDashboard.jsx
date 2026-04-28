@@ -3,6 +3,20 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createDailyChallenge, getAllSubmissions, getAllChallenges, updateChallengeStatus, runAdminDryRun, getChallengeBySlot, updateDailyChallenge, deleteChallenge } from '../api/client';
 import { useNavigate } from "react-router-dom";
+// 1. Import the code editor component
+import Editor from 'react-simple-code-editor';
+
+// 2. Import Prism for logic and highlighting
+import { highlight, languages } from 'prismjs/components/prism-core';
+
+// 3. Import the specific languages you want to support
+import 'prismjs/components/prism-clike';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-java';
+
+// 4. Import a professional dark theme (essential for visibility)
+import 'prismjs/themes/prism-tomorrow.css';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('create'); 
@@ -568,17 +582,132 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="pt-8 border-t border-zinc-700 space-y-4">
+                    <div className="pt-8 border-t border-zinc-800 space-y-6">
+                      {/* Header: Industrial IDE Toolbar */}
                       <header className="flex justify-between items-end">
                         <div className="space-y-1">
-                          <label className="text-[11px] font-medium text-zinc-300">Reference solution (Python)</label>
-                          <p className="text-[10px] text-zinc-500 italic">Verify your test cases with a working solution.</p>
+                          <label className="text-[11px] font-medium text-zinc-300">Reference solution</label>
+                          <p className="text-[10px] text-zinc-500 italic">Verify logic against all test cases before saving.</p>
                         </div>
-                        <button type="button" onClick={() => handleDryRun(qIndex)} disabled={isDryRunning[qIndex]} className="px-5 py-1.5 border border-zinc-600 text-[10px] font-bold text-zinc-200 hover:bg-zinc-100 hover:text-black transition-all rounded-none">
-                          {isDryRunning[qIndex] ? 'Running...' : 'Run code'}
-                        </button>
+                        <div className="flex items-center gap-3">
+                          {dryRunResults[qIndex] && (
+                            <button 
+                              type="button"
+                              onClick={() => setDryRunResults(prev => { const n = {...prev}; delete n[qIndex]; return n; })}
+                              className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                            >
+                              Clear console
+                            </button>
+                          )}
+                          <button 
+                            type="button"
+                            onClick={() => handleDryRun(qIndex)}
+                            disabled={isDryRunning[qIndex]}
+                            className="px-6 py-2 bg-zinc-100 text-zinc-950 text-[11px] font-bold hover:bg-white transition-all rounded-none disabled:opacity-30"
+                          >
+                            {isDryRunning[qIndex] ? 'Verifying...' : 'Run verify'}
+                          </button>
+                        </div>
                       </header>
-                      <textarea rows="10" required value={q.solution_code} onChange={(e) => handleQuestionChange(qIndex, 'solution_code', e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded-none p-5 text-[12px] font-mono text-zinc-300 outline-none focus:border-zinc-500 transition-all custom-scrollbar" placeholder="def solution()..." />
+
+                      {/* Code Workspace */}
+                      <div className="border border-zinc-800 bg-zinc-950/50">
+                        <Editor
+                          value={q.solution_code}
+                          onValueChange={code => handleQuestionChange(qIndex, 'solution_code', code)}
+                          highlight={code => highlight(code, languages.python)}
+                          padding={20}
+                          className="font-mono text-[13px] min-h-[300px] outline-none"
+                          style={{
+                            fontFamily: '"Fira Code", monospace',
+                            backgroundColor: 'transparent'
+                          }}
+                        />
+                      </div>
+
+                      {/* Verification Console */}
+                      {dryRunResults[qIndex] && (() => {
+                        const results = dryRunResults[qIndex].results || dryRunResults[qIndex].test_results || [];
+                        const systemError = dryRunResults[qIndex].error || dryRunResults[qIndex].message;
+                        const allPassed = results.length > 0 && results.every(res => res.passed);
+                        const isCrash = !!systemError || results.some(res => res.status === "RUNTIME_ERROR");
+                        
+                        const failedCases = results.filter(r => !r.passed);
+                        const totalCount = results.length;
+
+                        return (
+                          <div className="bg-[#09090b] border border-zinc-800 rounded-none animate-in fade-in slide-in-from-top-1 duration-400">
+                            
+                            {/* Status Bar */}
+                            <div className="px-4 py-2 border-b border-zinc-800 flex items-center justify-between bg-zinc-950">
+                              <div className="flex items-center gap-4">
+                                <span className="text-[11px] font-medium text-zinc-400">Verification log</span>
+                              </div>
+                              <span className={`text-[10px] font-mono px-2 py-0.5 border rounded-none ${
+                                allPassed 
+                                  ? 'text-emerald-500 border-emerald-900/30 bg-emerald-500/5' 
+                                  : 'text-red-500 border-red-900/30 bg-red-500/5'
+                              }`}>
+                                {allPassed ? 'All cases passed' : isCrash ? 'Execution error' : `${failedCases.length} errors found`}
+                              </span>
+                            </div>
+
+                            <div className="divide-y divide-zinc-800/50 max-h-[500px] overflow-y-auto custom-scrollbar bg-black/10">
+                              {/* Priority 1: System/Syntax Errors (The most important thing to fix) */}
+                              {systemError && (
+                                <div className="p-4 bg-red-950/5">
+                                  <div className="flex items-center gap-2 mb-3">
+                                    <div className="w-1 h-1 bg-red-500" />
+                                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Traceback</span>
+                                  </div>
+                                  <pre className="text-[11px] font-mono text-zinc-400 whitespace-pre-wrap bg-black/40 p-4 border border-red-900/20 leading-relaxed">
+                                    {systemError}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {/* Priority 2: Failed Cases (Debugging data) */}
+                              {failedCases.map((res, idx) => (
+                                <div key={idx} className="p-5 space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-[10px] font-mono text-zinc-500 italic">
+                                        {res.is_public ? 'public' : 'hidden'} case {res.case || results.indexOf(res) + 1}
+                                      </span>
+                                      <span className="text-[10px] font-medium text-red-500">Failed</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 gap-3 bg-zinc-950 p-4 border-l border-red-900/40">
+                                    <div className="space-y-1">
+                                      <span className="text-[9px] text-zinc-600 font-medium uppercase">Input</span>
+                                      <pre className="text-[11px] font-mono text-zinc-400 whitespace-pre-wrap">{res.input || 'N/A'}</pre>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 pt-3 border-t border-zinc-900">
+                                      <div className="space-y-1">
+                                        <span className="text-[9px] text-zinc-600 font-medium uppercase">Expected</span>
+                                        <pre className="text-[11px] font-mono text-zinc-500 whitespace-pre-wrap">{res.expected}</pre>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <span className="text-[9px] text-zinc-600 font-medium uppercase">Actual</span>
+                                        <pre className="text-[11px] font-mono text-red-400 whitespace-pre-wrap">{res.actual || "no output"}</pre>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Priority 3: Success Summary (Compact) */}
+                              {allPassed && (
+                                <div className="p-10 text-center space-y-2">
+                                  <p className="text-[11px] text-zinc-400">All {totalCount} test cases verified against the reference solution.</p>
+                                  <p className="text-[10px] text-zinc-600 italic font-mono">Status: 0 errors / {totalCount} success</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </section>
