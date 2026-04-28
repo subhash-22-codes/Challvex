@@ -21,12 +21,29 @@ async def signup(user: User):
     user_dict = user.model_dump()
     user_dict["password"] = hash_password(user.password)
     
+    # --- ROLE LOCKING LOGIC START ---
+    # Get roles from request, default to empty list if missing
+    incoming_roles = user_dict.get("roles", [])
+    
+    # Ensure it's a list (defensive check)
+    if not isinstance(incoming_roles, list):
+        incoming_roles = [incoming_roles]
+
+    # Force "student" to be there and allow "admin" if they chose it
+    # This prevents them from being ONLY an admin or having no roles
+    final_roles = {"student"} 
+    if "admin" in incoming_roles:
+        final_roles.add("admin")
+    
+    user_dict["roles"] = list(final_roles)
+    # --- ROLE LOCKING LOGIC END ---
+    
     # 2. Add Verification Fields
     user_dict["is_verified"] = False
     user_dict["verification_otp"] = otp
     user_dict["otp_expires"] = datetime.now(timezone.utc) + timedelta(minutes=10)
     
-    # 3. Add TTL field (This document will auto-delete in 24 hours if not verified)
+    # 3. Add TTL field
     user_dict["expire_at"] = datetime.now(timezone.utc) + timedelta(hours=24)
 
     await db.users.insert_one(user_dict)
@@ -35,11 +52,11 @@ async def signup(user: User):
     email_sent = await send_verification_otp_email(user.email, user.username, otp)
     
     if not email_sent:
-        # We don't want to leave a user in the DB if we can't send them the code
         await db.users.delete_one({"email": user.email})
         raise HTTPException(status_code=500, detail="Failed to send verification email.")
 
     return {"message": "OTP sent to your email. Please verify to activate account."}
+
 
 @router.post("/verify-otp")
 async def verify_otp(payload: dict):
