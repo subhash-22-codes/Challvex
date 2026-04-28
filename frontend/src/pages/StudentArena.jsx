@@ -269,7 +269,7 @@ const handleSaveQuestion = async () => {
     localStorage.removeItem(DRAFT_KEY); 
     
     // 3. Go home
-    navigate("/"); 
+    navigate("/dashboard"); 
   } catch (err) {
     console.error("Failed to clear cloud draft:", err);
     // Even if the network fails, we clear local and leave
@@ -293,7 +293,7 @@ const confirmSubmit = async () => {
     });
     localStorage.removeItem(DRAFT_KEY);
     setShowSubmitModal(false);
-    navigate("/"); 
+    navigate("/dashboard"); 
   } catch (err) {
     alert("Failed to submit. Please check your connection.");
   } finally {
@@ -342,8 +342,8 @@ const confirmSubmit = async () => {
       {/* 2. NAVIGATION */}
       <nav className="h-14 border-b border-zinc-800/50 flex items-center px-6 shrink-0 bg-[#09090b] justify-between z-[100]">
         <div className="flex items-center gap-4 w-1/3">
-          <button onClick={() => isViewOnly ? navigate("/") : setShowLeaveModal(true)} className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors">
-            back
+          <button onClick={() => isViewOnly ? navigate("/dashboard") : setShowLeaveModal(true)} className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors">
+            Back to Dashboard
           </button>
           <div className="h-3 w-[1px] bg-zinc-800"></div>
           <span className="text-[11px] font-medium text-zinc-100 truncate">{challenge?.title}</span>
@@ -377,7 +377,7 @@ const confirmSubmit = async () => {
              onClick={() => !isViewOnly && setTimerActive(!timerActive)}
              className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
            >
-             {timerActive ? 'pause' : 'resume'}
+             {timerActive ? 'Pause' : 'Resume'}
            </button>
            <div className={`font-mono text-xs px-3 py-1 rounded border transition-colors ${timeLeft < 300 ? 'text-red-400 border-red-500/20 bg-red-400/5' : 'text-zinc-300 border-zinc-800 bg-zinc-900/30'}`}>
              {formatTime(timeLeft)}
@@ -749,10 +749,10 @@ const confirmSubmit = async () => {
               </div>
 
               <button 
-                onClick={() => navigate("/")} 
+                onClick={() => navigate("/dashboard")} 
                 className="text-[11px] font-medium text-zinc-500 hover:text-white bg-zinc-900 px-4 py-1.5 border border-zinc-800 rounded-none"
               >
-                Return to home
+                Return to Dashboard
               </button>
             </div>
           )}

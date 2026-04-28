@@ -67,7 +67,7 @@ export default function ForgotPassword() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest">
+            <label className="text-[11px] font-medium text-zinc-500 tracking-widest">
               Email address
             </label>
             <input

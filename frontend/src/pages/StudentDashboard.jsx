@@ -115,7 +115,7 @@ export default function StudentDashboard() {
         <section className="mb-12">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10">
             <header className="space-y-1">
-              <p className="text-[11px] font-medium text-zinc-500 tracking-widest uppercase">
+              <p className="text-[11px] font-medium text-zinc-500 tracking-widest">
                 Solver dashboard
               </p>
               <h1 className="text-2xl font-medium text-white tracking-tight">

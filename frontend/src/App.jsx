@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// --- Page Imports (Ensure these filenames match exactly on your disk!) ---
+import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentArena from './pages/StudentArena';
 import StudentDashboard from './pages/StudentDashboard';
@@ -14,8 +14,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
 /**
- * PROTECTED ROUTE (Gatekeeper)
- * Checks if the user is logged in and has the required role.
+ * ProtectedRoute Component
+ * Prevents unauthorized access and handles role-based filtering.
  */
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -23,8 +23,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-        <div className="text-blue-500 font-mono text-xs uppercase animate-pulse">
-          Authenticating...
+        <div className="text-zinc-500 font-mono text-xs animate-pulse">
+          Checking access...
         </div>
       </div>
     );
@@ -34,46 +34,65 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  const hasAccess = user?.roles?.some(role => allowedRoles.includes(role));
+  // Ensure roles is treated as an array even if backend sends a string
+  const userRoles = Array.isArray(user.roles) ? user.roles : [user.roles];
+  const hasAccess = userRoles.some(role => allowedRoles.includes(role));
 
   return hasAccess ? children : <Navigate to="/" replace />;
 };
 
 /**
- * APP CONTENT
- * Separated so we can use the useAuth hook inside the Router.
+ * AppContent Component
+ * Contains the routing logic and global layout elements.
  */
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAuth(); 
+  const location = useLocation();
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-        <div className="text-zinc-700 font-bold text-xs tracking-widest uppercase">
-          Initializing System...
+        <div className="text-zinc-700 font-medium text-xs tracking-tight">
+          Starting...
         </div>
       </div>
     );
   }
 
+  // Show Navbar on all pages EXCEPT the landing page
+  const showGlobalNav = location.pathname !== "/";
+
   return (
-    // Note: I added "border-4 border-red-500" and "bg-slate-950" 
-    // just so you can VISUALLY see if the app is rendering.
-    <div className="min-h-screen bg-[#09090b] border-2 border-red-900/20">
-      
-      {/* 1. If the page goes white after adding this, GlobalNavbar.jsx has an error */}
-      <GlobalNavbar />
+    <div className="min-h-screen bg-[#09090b]">
+      {showGlobalNav && <GlobalNavbar />}
       
       <Routes>
-        {/* Public access */}
+        {/* SMART ROOT ROUTE: 
+          If logged in, automatically redirect to the correct dashboard.
+          If not logged in, show the Landing Page.
+        */}
+        <Route 
+          path="/" 
+          element={
+            user ? (
+              user.roles?.includes("admin") 
+                ? <Navigate to="/admin" replace /> 
+                : <Navigate to="/dashboard" replace />
+            ) : (
+              <LandingPage />
+            )
+          } 
+        />
+        
+        {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Student Access */}
+        {/* Student Protected Routes */}
         <Route 
-          path="/" 
+          path="/dashboard" 
           element={
             <ProtectedRoute allowedRoles={["student"]}>
               <StudentDashboard />
@@ -89,7 +108,7 @@ function AppContent() {
           } 
         />
         
-        {/* Admin Access */}
+        {/* Admin Protected Routes */}
         <Route 
           path="/admin" 
           element={
@@ -107,15 +126,15 @@ function AppContent() {
           } 
         />
 
-        {/* Catch-all Redirect */}
-        <Route path="*" element={<Navigate to={user ? "/" : "/login"} replace />} />
+        {/* Catch-all: Redirect unknown routes back to root */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );
 }
 
 /**
- * MAIN APP COMPONENT
+ * Main App Component
  */
 export default function App() {
   return (

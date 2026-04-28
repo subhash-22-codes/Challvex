@@ -37,7 +37,7 @@ export default function LoginPage() {
         data.access_token
       );
       
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       const isSystemError = err.message === 'Failed to fetch' || !navigator.onLine;
       
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <div className="space-y-4">
             {/* Email Field */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest">Email address</label>
+              <label className="text-[11px] font-medium text-zinc-500 tracking-widest">Email address</label>
               <input 
                 type="email" 
                 required
@@ -108,7 +108,7 @@ export default function LoginPage() {
             {/* Password Field */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest">Password</label>
+                <label className="text-[11px] font-medium text-zinc-500 tracking-widest">Password</label>
                 <Link 
                   to="/forgot-password" 
                   className="text-[10px] text-zinc-500 hover:text-zinc-200 transition-colors"

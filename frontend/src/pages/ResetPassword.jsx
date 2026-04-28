@@ -82,7 +82,7 @@ export default function ResetPassword() {
       {toast.show && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] animate-in slide-in-from-top-4 duration-300">
           <div className="bg-white text-black px-5 py-2.5 shadow-2xl flex items-center gap-3">
-            <span className="text-[11px] font-bold uppercase tracking-tight">{toast.message}</span>
+            <span className="text-[11px] font-bold tracking-tight">{toast.message}</span>
           </div>
         </div>
       )}
@@ -111,7 +111,7 @@ export default function ResetPassword() {
             <div className="space-y-4">
               {/* New Password */}
               <div className="space-y-1.5 relative">
-                <label className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest">New password</label>
+                <label className="text-[11px] font-medium text-zinc-500 tracking-widest">New password</label>
                 <div className="relative">
                   <input
                     type={showPass ? "text" : "password"}
@@ -134,7 +134,7 @@ export default function ResetPassword() {
 
               {/* Confirm Password */}
               <div className="space-y-1.5 relative">
-                <label className="text-[11px] font-medium text-zinc-500 uppercase tracking-widest">Confirm password</label>
+                <label className="text-[11px] font-medium text-zinc-500 tracking-widest">Confirm password</label>
                 <div className="relative">
                   <input
                     type={showConfirm ? "text" : "password"}

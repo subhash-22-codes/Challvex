@@ -31,7 +31,7 @@ export default function GlobalNavbar() {
   return (
     <nav className="bg-[#09090b]/90 backdrop-blur-md border-b border-zinc-800/50 px-4 sm:px-8 h-14 flex justify-between items-center sticky top-0 z-[100]">
       <div className="flex items-center gap-10">
-        <Link to="/" className="transition-opacity hover:opacity-80">
+        <Link to="/dashboard" className="transition-opacity hover:opacity-80">
           <img 
             src="/challvex.png" 
             alt="Challvex" 
@@ -42,9 +42,9 @@ export default function GlobalNavbar() {
         <div className="flex gap-6">
           {isSolver && (
             <Link 
-              to="/" 
+              to="/dashboard" 
               className={`text-[11px] transition-colors ${
-                location.pathname === '/' 
+                location.pathname === '/dashboard' 
                   ? 'text-zinc-100' 
                   : 'text-zinc-500 hover:text-zinc-300'
               }`}

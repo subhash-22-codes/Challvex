@@ -397,7 +397,7 @@ export default function AdminDashboard() {
               ))}
             </div>
           </div>
-          <Link to="/" className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors">Exit dashboard</Link>
+          <Link to="/dashboard" className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors">Exit dashboard</Link>
         </div>
       </nav>
 
