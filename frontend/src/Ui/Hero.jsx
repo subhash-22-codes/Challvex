@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Code2, PlusCircle, Rocket, ChevronRight } from 'lucide-react';
+import { PlusCircle, Rocket, ChevronRight } from 'lucide-react';
 
 export default function Hero() {
   return (
@@ -59,16 +59,11 @@ export default function Hero() {
           <div className="absolute -inset-1 bg-white/5 blur-2xl rounded-full" />
           <div className="relative bg-[#0c0c0e] border border-zinc-800 p-1 shadow-2xl">
             <img 
-              src="/image_4bba74.png" 
+              src="/platform.png" 
               alt="Coding Arena" 
               className="w-full h-auto brightness-90 group-hover:brightness-100 transition-all duration-500"
             />
             
-            {/* Simple Student-Friendly Overlay */}
-            <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/80 px-3 py-1.5 border border-zinc-800 backdrop-blur-sm">
-              <Code2 size={14} className="text-emerald-500" />
-              <span className="text-[10px] font-mono text-zinc-300 tracking-tight">Practice mode active</span>
-            </div>
           </div>
         </motion.div>
       </div>

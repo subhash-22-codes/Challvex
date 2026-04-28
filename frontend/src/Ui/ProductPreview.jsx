@@ -49,22 +49,11 @@ export default function ProductPreview() {
           {/* Your Arena Screenshot */}
           <div className="relative overflow-hidden">
             <img 
-              src="/image_4bba74.png" 
+              src="/platform.png" 
               alt="The coding arena" 
               className="w-full h-auto brightness-90 group-hover:brightness-100 transition-all duration-700"
             />
             
-            {/* Floating Human Tag */}
-            <motion.div 
-              animate={{ y: [0, -5, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-              className="absolute top-6 right-6 hidden md:block"
-            >
-              <div className="bg-black/80 backdrop-blur-md border border-zinc-700 p-3 flex items-center gap-3">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                <p className="text-[11px] text-zinc-300 font-medium">Checking your tests right now...</p>
-              </div>
-            </motion.div>
           </div>
         </motion.div>
 

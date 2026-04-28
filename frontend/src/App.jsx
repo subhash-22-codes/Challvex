@@ -76,7 +76,7 @@ function AppContent() {
           element={
             user ? (
               user.roles?.includes("admin") 
-                ? <Navigate to="/admin" replace /> 
+                ? <Navigate to="/dashboard" replace /> 
                 : <Navigate to="/dashboard" replace />
             ) : (
               <LandingPage />

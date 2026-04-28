@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Mail, Globe, Heart } from 'lucide-react';
 
 export default function LandingFooter() {
@@ -21,7 +20,7 @@ export default function LandingFooter() {
               A simple place to build and solve coding puzzles. Designed for students who love to learn and challenge each other.
             </p>
             <div className="flex items-center gap-4 text-zinc-600">
-              <a href="mailto:support@challvex.com" className="hover:text-white transition-colors"><Mail size={18} /></a>
+              <a href="mailto:challvex.code@gmail.com" className="hover:text-white transition-colors"><Mail size={18} /></a>
               <Globe size={18} />
             </div>
           </div>
@@ -49,7 +48,7 @@ export default function LandingFooter() {
           <div className="space-y-5">
             <h4 className="text-[14px] font-semibold text-zinc-200">Support</h4>
             <ul className="space-y-3 text-[13px] text-zinc-500">
-              <li><a href="mailto:admin@challvex.app" className="hover:text-white transition-colors">Contact us</a></li>
+              <li><a href="mailto:challvex.code@gmail.com" className="hover:text-white transition-colors">Contact us</a></li>
               <li><Link to="/about" className="hover:text-white transition-colors">Help guide</Link></li>
               <li className="text-zinc-700 italic">Leaderboard (Soon)</li>
             </ul>
@@ -69,16 +68,6 @@ export default function LandingFooter() {
             </div>
           </div>
 
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-3 px-4 py-1.5 bg-zinc-950 border border-zinc-800"
-          >
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[11px] text-zinc-500 font-mono italic">
-              System is running smoothly
-            </span>
-          </motion.div>
         </div>
 
       </div>
