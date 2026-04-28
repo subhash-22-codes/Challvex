@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { UserCircle2, Swords, BarChart3, ArrowRight } from 'lucide-react';
 
-export default function Workflow() {
+export default function WorkFlow() {
   const steps = [
     {
       icon: <UserCircle2 size={20} className="text-zinc-100" />,

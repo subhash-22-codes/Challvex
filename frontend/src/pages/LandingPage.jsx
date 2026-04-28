@@ -1,7 +1,7 @@
 import LandingNavbar from '../Ui/LandingNavbar';
 import Hero from '../Ui/Hero';
 import Duality from '../Ui/Duality';
-import Workflow from '../Ui/Workflow';
+import WorkFlow from '../Ui/WorkFlow';
 import FeatureGrid from '../Ui/FeatureGrid';
 import ProductPreview from '../Ui/ProductPreview';
 import UseCases from '../Ui/UseCases';
@@ -14,7 +14,7 @@ export default function LandingPage() {
       <LandingNavbar />
       <Hero />
       <Duality />
-      <Workflow />
+      <WorkFlow />
       <FeatureGrid />
       <ProductPreview />
       <UseCases />
