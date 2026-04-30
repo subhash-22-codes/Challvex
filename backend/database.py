@@ -1,9 +1,8 @@
 import os
 import logging
-import certifi
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ASCENDING, DESCENDING
-
+import certifi
 logger = logging.getLogger(__name__)
 
 # ----------------------------
@@ -98,9 +97,56 @@ async def init_db():
         await db.submissions.create_index(
             [("status", ASCENDING)]
         )
+        
+        # ----------------------------
+        # ORGANIZATIONS
+        # ----------------------------
+        # Ensure every org has a unique permanent URL slug
+        await db.organizations.create_index(
+            [("slug", ASCENDING)],
+            unique=True
+        )
+        
+        # Index by owner for the "My Organizations" list
+        await db.organizations.create_index([("owner_id", ASCENDING)])
 
-        logger.info("All indexes initialized successfully")
+        # ----------------------------
+        # ORGANIZATION MEMBERS (The Invite System)
+        # ----------------------------
+        # A user can only have ONE membership status per organization
+        await db.org_members.create_index(
+            [("org_id", ASCENDING), ("user_id", ASCENDING)],
+            unique=True
+        )
+        
+        # Index by user_id so we can quickly show a user all orgs they belong to
+        await db.org_members.create_index([("user_id", ASCENDING)])
 
+        # ----------------------------
+        # ACCESS ATTEMPTS (The Gatekeeper / Rate Limiting)
+        # ----------------------------
+        # Compound index to track a specific user's attempts on a specific challenge
+        await db.access_attempts.create_index(
+            [("user_id", ASCENDING), ("slot_id", ASCENDING)],
+            unique=True
+        )
+
+        # TTL INDEX: This is the "Magic" for your 1-minute cooldown.
+        # This document will automatically disappear when 'expire_at' is reached.
+        # Once it's gone, the user is no longer "rate limited."
+        await db.access_attempts.create_index(
+            [("expire_at", ASCENDING)],
+            expireAfterSeconds=0
+        )
+        # Add this to your database.py inside init_db()
+        await db.organizations.create_index(
+            [("name", ASCENDING)], 
+            unique=True
+        )
+
+        logger.info("All indexes (including Organizations & Gatekeeper) initialized successfully")
+
+        
     except Exception as e:
         logger.exception(f"Database initialization failed: {e}")
         raise

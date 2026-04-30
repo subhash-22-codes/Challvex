@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import db, init_db
-from routes import challenges, submissions, auth, judge
+from routes import challenges, submissions, auth, judge, orgs
 
 # -----------------------------------
 # LOAD ENV
@@ -78,6 +78,12 @@ app.include_router(
     judge.router,
     prefix="/api",
     tags=["Judge"]
+)
+
+app.include_router(
+    orgs.router,
+    prefix="/api",
+    tags=["Organizations"]
 )
 
 # -----------------------------------

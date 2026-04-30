@@ -120,13 +120,11 @@ async def login(credentials: UserLogin):
     if not user or not verify_password(credentials.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    # --- ADD THIS CHECK ---
     if not user.get("is_verified", False):
         raise HTTPException(
             status_code=403, 
             detail="Account not verified. Please check your email for the OTP."
         )
-    # ----------------------
     
     token_data = {
         "sub": str(user["_id"]),
@@ -136,9 +134,11 @@ async def login(credentials: UserLogin):
     
     token = create_access_token(token_data)
     
+    # --- THE FIX: Include the ID in the return dictionary ---
     return {
         "access_token": token,
         "token_type": "bearer",
+        "id": str(user["_id"]), # <-- ADD THIS LINE
         "roles": user["roles"],
         "username": user["username"]
     }

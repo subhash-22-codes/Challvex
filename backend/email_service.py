@@ -216,3 +216,63 @@ async def send_verification_otp_email(target_email: str, username: str, otp: str
         except Exception as e:
             logger.error(f"OTP Email Error: {str(e)}")
             return False
+        
+async def send_org_invite_email(target_email: str, username: str, inviter_name: str, org_name: str):
+    url = "https://api.brevo.com/v3/smtp/email"
+    
+    # Updated: Points to the admin dashboard where the tabs actually exist
+    invite_link = f"{FRONTEND_URL}/admin?tab=organization"
+    logo_url = "https://res.cloudinary.com/dggciuh9l/image/upload/v1776788278/profile_pics/rtvycbiuzzog1b0qqj3n.png"
+    timestamp = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d %b, %H:%M")
+    
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+    
+    payload = {
+        "sender": {"email": SENDER_EMAIL, "name": "Challvex"},
+        "to": [{"email": target_email, "name": username}],
+        "subject": f"Invitation to join {org_name} — {timestamp}",
+        "htmlContent": f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="background-color: #09090b; margin: 0; padding: 0; font-family: sans-serif;">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #09090b; padding: 40px 20px;">
+                <tr>
+                    <td align="center">
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 480px; background-color: #0c0c0e; border: 1px solid #27272a; padding: 40px;">
+                            <tr>
+                                <td align="center" style="padding-bottom: 32px;">
+                                    <img src="{logo_url}" alt="Challvex" height="22" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <h1 style="color: #f4f4f5; font-size: 17px; font-weight: 500; margin-bottom: 16px;">Hello {username},</h1>
+                                    <p style="color: #a1a1aa; font-size: 13px; line-height: 1.6; margin-bottom: 24px;">
+                                        <strong style="color: #f4f4f5;">{inviter_name}</strong> has invited you to join the <strong style="color: #f4f4f5;">{org_name}</strong> organization on Challvex as a Creator.
+                                    </p>
+                                    <a href="{invite_link}" style="background-color: #f4f4f5; color: #09090b; display: inline-block; font-size: 11px; font-weight: 700; line-height: 44px; text-align: center; text-decoration: none; width: 100%; text-transform: uppercase; letter-spacing: 0.05em;">View Invitation</a>
+                                    <p style="color: #52525b; font-size: 11px; margin-top: 28px;">
+                                        If you weren't expecting this invitation, you can safely ignore this email.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+        """
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            return response.status_code == 201
+        except Exception as e:
+            logger.error(f"Invite email failed: {str(e)}")
+            return False
