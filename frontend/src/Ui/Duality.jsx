@@ -161,16 +161,6 @@ export default function Duality() {
 
         </motion.div>
 
-        {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="flex items-center gap-2 text-[10px] font-mono text-zinc-700"
-        >
-          <div className="w-1 h-1 bg-zinc-800" />
-          <span>Make tasks. Solve logic. Learn together.</span>
-        </motion.div>
 
       </div>
     </section>

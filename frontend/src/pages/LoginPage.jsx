@@ -33,7 +33,7 @@ export default function LoginPage() {
       const data = await loginUser({ email, password });
       
       login(
-        { username: data.username, roles: data.roles }, 
+        { id: data.id, username: data.username, roles: data.roles }, 
         data.access_token
       );
       

@@ -2,25 +2,20 @@ import { useAuth } from '../context/AuthContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 export default function GlobalNavbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, currentOrg } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Handle Sign out safely
   const handleSignOut = () => {
     logout(); 
     navigate('/login');
   };
 
-  // 1. Hide navbar on auth pages
   const authPages = ['/login', '/signup', '/forgot-password', '/reset-password'];
-  
-  // 2. Focus Mode: Hide navbar on dynamic routes like Arena or Admin Review
   const isFocusMode = 
     location.pathname.startsWith('/arena/') || 
     location.pathname.startsWith('/admin/review/');
 
-  // 3. The Logic Gate: Don't render if not logged in, on auth pages, or in focus mode
   if (!user || authPages.includes(location.pathname) || isFocusMode) {
     return null;
   }
@@ -30,38 +25,29 @@ export default function GlobalNavbar() {
 
   return (
     <nav className="bg-[#09090b]/90 backdrop-blur-md border-b border-zinc-800/50 px-4 sm:px-8 h-14 flex justify-between items-center sticky top-0 z-[100]">
-      <div className="flex items-center gap-10">
+      <div className="flex items-center gap-4">
+        {/* Logo */}
         <Link to="/dashboard" className="transition-opacity hover:opacity-80">
-          <img 
-            src="/challvex.png" 
-            alt="Challvex" 
-            className="h-4 w-auto brightness-110" 
-          />
+          <img src="/challvex.png" alt="Challvex" className="h-4 w-auto brightness-110" />
         </Link>
 
-        <div className="flex gap-6">
+        {/* Flat Identity Stamp - No more interactive switcher here */}
+        <div className="flex items-center gap-4">
+          <span className="text-zinc-800 text-lg font-light select-none">/</span>
+          <span className="text-[11px] font-medium text-zinc-500 tracking-tight">
+            {currentOrg ? currentOrg.name : "Personal Workspace"}
+          </span>
+        </div>
+
+        {/* Global Navigation Links */}
+        <div className="flex gap-6 ml-6 border-l border-zinc-800/50 pl-6 h-4 items-center">
           {isSolver && (
-            <Link 
-              to="/dashboard" 
-              className={`text-[11px] transition-colors ${
-                location.pathname === '/dashboard' 
-                  ? 'text-zinc-100' 
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
+            <Link to="/dashboard" className={`text-[11px] transition-colors ${location.pathname === '/dashboard' ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'}`}>
               Challenges
             </Link>
           )}
-
           {isCreator && (
-            <Link 
-              to="/admin" 
-              className={`text-[11px] transition-colors ${
-                location.pathname.startsWith('/admin') 
-                  ? 'text-zinc-100' 
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
+            <Link to="/admin" className={`text-[11px] transition-colors ${location.pathname.startsWith('/admin') ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'}`}>
               Creator
             </Link>
           )}
@@ -74,13 +60,7 @@ export default function GlobalNavbar() {
             {user?.username || "User"}
           </span>
           <span className="text-[10px] text-zinc-600 font-normal lowercase italic">
-            {isCreator && isSolver
-              ? "creator / solver"
-              : isCreator
-              ? "creator access"
-              : isSolver
-              ? "solver access"
-              : "standard access"}
+            {currentOrg ? `${currentOrg.role} @ ${currentOrg.slug}` : (isCreator ? "global creator" : "solver access")}
           </span>
         </div>
 

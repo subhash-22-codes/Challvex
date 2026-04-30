@@ -181,68 +181,53 @@ export const resetPassword =
 /* ----------------------------------
    CHALLENGES
 ---------------------------------- */
+// Create a new assessment
+export const createDailyChallenge = async (challengeData) =>
+  request("/api/challenges/", {
+    method: "POST",
+    body: challengeData,
+  });
 
-export const createDailyChallenge =
-  async (challengeData) =>
-    request("/api/challenges", {
-      method: "POST",
-      body: challengeData,
-    });
+// Fetch assessments with optional filters
+export const getAllChallenges = async (personal = false, orgId = null) => {
+  const params = new URLSearchParams();
+  
+  // Only add parameters if they are active
+  if (personal) params.append("personal", "true");
+  if (orgId) params.append("org_id", orgId);
 
-export const getAllChallenges =
-  async (personal = false) =>
-    request(
-      personal
-        ? "/api/challenges?personal=true"
-        : "/api/challenges"
-    );
+  const queryString = params.toString();
+  // The trailing slash before the ? prevents the 307 redirect
+  return request(`/api/challenges/${queryString ? `?${queryString}` : ""}`);
+};
 
-export const getChallengeBySlot =
-  async (slotId) =>
-    request(
-      `/api/challenges/${slotId}`
-    );
+// Fetch a single assessment by its slot ID
+export const getChallengeBySlot = async (slotId) =>
+  request(`/api/challenges/${slotId}`);
 
-export const getLatestChallenge =
-  async () =>
-    request(
-      "/api/challenges/latest"
-    );
+// Fetch the most recent assessment
+export const getLatestChallenge = async () =>
+  request("/api/challenges/latest");
 
-export const updateChallengeStatus =
-  async (
-    slotId,
-    status
-  ) =>
-    request(
-      `/api/challenges/${slotId}/status`,
-      {
-        method: "PATCH",
-        body: { status },
-      }
-    );
+// Update the status (draft, live, etc.) of an assessment
+export const updateChallengeStatus = async (slotId, status) =>
+  request(`/api/challenges/${slotId}/status`, {
+    method: "PATCH",
+    body: { status },
+  });
 
-export const updateDailyChallenge = async (
-  slotId,
-  challengeData
-) =>
-  request(
-    `/api/challenges/${slotId}`,
-    {
-      method: "PUT",
-      body: challengeData,
-    }
-  );
+// Update the full content of an assessment
+export const updateDailyChallenge = async (slotId, challengeData) =>
+  request(`/api/challenges/${slotId}`, {
+    method: "PUT",
+    body: challengeData,
+  });
 
-export const deleteChallenge = async (
-  slotId
-) =>
-  request(
-    `/api/challenges/${slotId}`,
-    {
-      method: "DELETE",
-    }
-  );
+// Permanently delete an assessment
+export const deleteChallenge = async (slotId) =>
+  request(`/api/challenges/${slotId}`, {
+    method: "DELETE",
+  });
 /* ----------------------------------
    SUBMISSIONS
 ---------------------------------- */
@@ -323,3 +308,58 @@ export const runAdminDryRun =
       method: "POST",
       body: payload,
     });
+
+/* ----------------------------------
+   ORGANIZATIONS
+---------------------------------- */
+
+export const createOrganization = async (name) =>
+  request(`/api/orgs/create?name=${encodeURIComponent(name)}`, {
+    method: "POST",
+  });
+
+export const getMyOrganizations = async () => 
+  request("/api/orgs/my-organizations");
+
+export const inviteMember = async (orgId, email) =>
+  request(`/api/orgs/${orgId}/invite?recipient_email=${encodeURIComponent(email)}`, {
+    method: "POST",
+  });
+
+export const respondToInvite = async (orgId, action) =>
+  request(`/api/orgs/invites/respond?org_id=${orgId}&action=${action}`, {
+    method: "POST",
+  });
+
+export const getPendingInvites = async () => 
+  request("/api/orgs/invites/pending");
+
+export const getOrgMembers = async (orgId) => {
+  console.log(`[DEBUG] API CALL: Fetching members for Org ID: ${orgId}`);
+  
+  try {
+    // Calling the route we created in Step 1
+    const response = await request(`/api/orgs/${orgId}/members`);
+    
+    console.log(`[DEBUG] API SUCCESS: Received ${response?.length || 0} members for Org: ${orgId}`);
+    return response;
+  } catch (error) {
+    console.error(`[DEBUG] API ERROR in getOrgMembers:`, error);
+    throw error; // Re-throw so the UI can handle the error state
+  }
+};
+
+// Remove a member from an organization
+export const removeOrgMember = async (orgId, userId) =>
+  request(`/api/orgs/${orgId}/members/${userId}`, {
+    method: "DELETE",
+  });
+/* ----------------------------------
+   GATEKEEPER (Access Control)
+---------------------------------- */
+
+export const verifyChallengeAccess = async (slotId, accessCode) =>
+  request(`/api/submissions/challenges/${slotId}/verify-access`, {
+    method: "POST",
+    body: { access_code: accessCode },
+  });
