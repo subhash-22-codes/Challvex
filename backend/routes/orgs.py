@@ -4,11 +4,13 @@ from database import db
 from email_service import send_org_invite_email
 from utils import slugify
 from auth_utils import get_current_user 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from typing import List, Optional
 from models import OrgCreateRequest, Organization, OrganizationMember
 from pymongo.errors import DuplicateKeyError
+
+from fastapi import BackgroundTasks
 
 logger = logging.getLogger(__name__)
 
@@ -257,50 +259,105 @@ async def get_org_members(
             detail="failed to fetch organization members."
         )
 
+
 @router.post("/{org_id}/invite", status_code=status.HTTP_200_OK)
 async def invite_member(
-    org_id: str, 
-    recipient_email: str, 
+    org_id: str,
+    recipient_email: str,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
     sender_id = str(current_user["id"])
-    
+    now = datetime.now(timezone.utc)
+
+    # -----------------------------
+    # 1. RATE LIMIT (per sender)
+    # max 5 invites per 1 minute
+    # -----------------------------
+    one_min_ago = now - timedelta(minutes=1)
+
+    sender_count = await db.org_members.count_documents({
+        "invited_by": sender_id,
+        "invited_at": {"$gte": one_min_ago}
+    })
+
+    if sender_count >= 5:
+        raise HTTPException(429, "Too many invites. Try again later.")
+
+    # -----------------------------
+    # 2. RATE LIMIT (per email)
+    # max 2 invites per 5 minutes
+    # -----------------------------
+    five_min_ago = now - timedelta(minutes=5)
+
+    email_user = await db.users.find_one({"email": recipient_email})
+    if email_user:
+        email_user_id = str(email_user["_id"])
+
+        email_count = await db.org_members.count_documents({
+            "user_id": email_user_id,
+            "invited_at": {"$gte": five_min_ago}
+        })
+
+        if email_count >= 2:
+            raise HTTPException(429, "This user was invited recently.")
+
+    # -----------------------------
+    # 3. ORG VALIDATION
+    # -----------------------------
     org = await db.organizations.find_one({"_id": ObjectId(org_id)})
     if not org:
-        raise HTTPException(status_code=404, detail="organization not found")
+        raise HTTPException(404, "organization not found")
 
     await ensure_org_admin(current_user, org_id)
 
+    # -----------------------------
+    # 4. USER CHECK
+    # -----------------------------
     recipient_user = await db.users.find_one({"email": recipient_email})
     if not recipient_user:
         raise HTTPException(
-            status_code=404, 
-            detail="no user found with this email. they must sign up first."
+            404,
+            "no user found with this email. they must sign up first."
         )
-    
+
     recipient_id = str(recipient_user["_id"])
 
+    # -----------------------------
+    # 5. EXISTING MEMBERSHIP CHECK
+    # -----------------------------
     existing_membership = await db.org_members.find_one({
         "org_id": org_id,
         "user_id": recipient_id
     })
 
     if existing_membership:
-        status_msg = "is already a member" if existing_membership["status"] == "active" else "already has a pending invite"
-        raise HTTPException(status_code=400, detail=f"user {status_msg}.")
+        status_msg = (
+            "is already a member"
+            if existing_membership["status"] == "active"
+            else "already has a pending invite"
+        )
+        raise HTTPException(400, f"user {status_msg}.")
 
+    # -----------------------------
+    # 6. CREATE INVITE
+    # -----------------------------
     new_invite = {
         "org_id": org_id,
         "user_id": recipient_id,
-        "role": "admin",
+        "role": "admin",  # your logic unchanged
         "status": "pending",
-        "invited_at": datetime.now(timezone.utc),
+        "invited_at": now,
         "invited_by": sender_id
     }
-    
+
     await db.org_members.insert_one(new_invite)
 
-    await send_org_invite_email(
+    # -----------------------------
+    # 7. SEND EMAIL (background)
+    # -----------------------------
+    background_tasks.add_task(
+        send_org_invite_email,
         target_email=recipient_email,
         username=recipient_user["username"],
         inviter_name=current_user["username"],
