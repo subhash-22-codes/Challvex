@@ -20,40 +20,53 @@ const getToken = () =>
 
 const getHeaders = (
   customHeaders = {},
-  withAuth = true
+  withAuth = true,
+  body = null
 ) => {
   const token = getToken();
 
   return {
-    "Content-Type": "application/json",
+    ...(body ? { "Content-Type": "application/json" } : {}),
     ...(withAuth && token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
+      ? { Authorization: `Bearer ${token}` }
       : {}),
     ...customHeaders,
   };
+};
+
+const fetchWithTimeout = async (url, options, timeout = 10000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return response;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error(
+        "Server is taking longer than expected. Please try again."
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(id);
+  }
 };
 
 const parseResponse = async (response) => {
   const contentType =
     response.headers.get("content-type") || "";
 
-  if (
-    contentType.includes(
-      "application/json"
-    )
-  ) {
+  if (contentType.includes("application/json")) {
     return await response.json();
   }
 
   const text = await response.text();
   return text || null;
 };
-
-/* ----------------------------------
-   CORE REQUEST WRAPPER
----------------------------------- */
 
 const request = async (
   endpoint,
@@ -64,56 +77,38 @@ const request = async (
     headers = {},
   } = {}
 ) => {
-  const response = await fetch(
-    `${API_BASE_URL}${endpoint}`,
-    {
-      method,
-      headers: getHeaders(
-        headers,
-        auth
-      ),
-      ...(body
-        ? {
-            body: JSON.stringify(
-              body
-            ),
-          }
-        : {}),
-    }
-  );
+  let response;
 
-  const data =
-    await parseResponse(response);
-
-  /* ----------------------------
-     ONLY Protected Routes:
-     Expired / Invalid Session
-  ---------------------------- */
-  if (
-    response.status === 401 &&
-    auth === true
-  ) {
-    logoutUser();
-
-    throw new Error(
-      "Session expired. Please login again."
+  try {
+    response = await fetchWithTimeout(
+      `${API_BASE_URL}${endpoint}`,
+      {
+        method,
+        headers: getHeaders(headers, auth, body),
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      },
+      10000
     );
+  } catch (err) {
+    console.error("Network error:", err);
+    throw new Error(err.message || "Network error. Check your connection.");
   }
 
-  /* ----------------------------
-     Other API Errors
-  ---------------------------- */
+  const data = await parseResponse(response);
+
+  if (response.status === 401 && auth === true) {
+    logoutUser();
+    throw new Error("Session expired. Please login again.");
+  }
+
   if (!response.ok) {
     throw new Error(
-      data?.detail ||
-        data ||
-        "Request failed"
+      data?.detail || data || "Request failed"
     );
   }
 
   return data;
 };
-
 /* ----------------------------------
    AUTH
 ---------------------------------- */
@@ -314,18 +309,25 @@ export const runAdminDryRun =
 ---------------------------------- */
 
 export const createOrganization = async (name) =>
-  request(`/api/orgs/create?name=${encodeURIComponent(name)}`, {
+  request("/api/orgs/create", {
     method: "POST",
+    body: { name }, // correct
   });
 
 export const getMyOrganizations = async () => 
   request("/api/orgs/my-organizations");
 
-export const inviteMember = async (orgId, email) =>
-  request(`/api/orgs/${orgId}/invite?recipient_email=${encodeURIComponent(email)}`, {
+export const inviteMember = async (orgId, payload) =>
+  request(`/api/orgs/${orgId}/invite`, {
     method: "POST",
+    body: payload, // This now carries the email, type, and note
   });
 
+export const checkUserOrgLimit = async (email) =>
+  request(`/api/orgs/check-limit/${email}`, {
+    method: "GET",
+  });
+  
 export const respondToInvite = async (orgId, action) =>
   request(`/api/orgs/invites/respond?org_id=${orgId}&action=${action}`, {
     method: "POST",
@@ -352,6 +354,11 @@ export const getOrgMembers = async (orgId) => {
 // Remove a member from an organization
 export const removeOrgMember = async (orgId, userId) =>
   request(`/api/orgs/${orgId}/members/${userId}`, {
+    method: "DELETE",
+  });
+
+  export const leaveOrganization = async (orgId) =>
+  request(`/api/orgs/${orgId}/leave`, {
     method: "DELETE",
   });
 /* ----------------------------------

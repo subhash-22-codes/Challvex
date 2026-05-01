@@ -18,7 +18,9 @@ import {
   getPendingInvites,
   respondToInvite,
   getOrgMembers,
-  removeOrgMember
+  removeOrgMember,
+  leaveOrganization,
+  checkUserOrgLimit
 } from '../api/client';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../context/AuthContext';
@@ -49,6 +51,12 @@ export default function AdminDashboard() {
   const [orgMembers, setOrgMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [showWorkspaceNote, setShowWorkspaceNote] = useState(false);
+  const { refreshUser } = useAuth();
+  // Add these with your other states
+const [isCheckingLimit, setIsCheckingLimit] = useState(false);
+const [targetLimitStatus, setTargetLimitStatus] = useState(null); // { exists, is_full, username }
+const [showCustomMessage, setShowCustomMessage] = useState(false);
+const [customMessage, setCustomMessage] = useState("");
 
   const [isCreatingOrg, setIsCreatingOrg] = useState(false); // Handles the loader and disabled states
 
@@ -117,10 +125,24 @@ export default function AdminDashboard() {
 const handleInviteAction = async (orgId, action) => {
   try {
     await respondToInvite(orgId, action);
-    // After accepting/declining, we refresh to show the new state
-    await refreshWorkspaceData();
+    
+    if (typeof refreshWorkspaceData === 'function') await refreshWorkspaceData();
+
+    setModal({
+      isOpen: true,
+      type: "success",
+      title: action === "accept" ? "Join Successful" : "Invite Declined",
+      message: action === "accept" 
+        ? "You have successfully joined the workspace." 
+        : "The invitation has been declined."
+    });
   } catch (err) {
-    console.error("Failed to respond to invite:", err);
+    setModal({
+      isOpen: true,
+      type: "error",
+      title: "Action Failed",
+      message: err.message || "Could not complete the request."
+    });
   }
 };
 
@@ -138,39 +160,92 @@ const handleInviteAction = async (orgId, action) => {
     } finally {      setIsCreatingOrg(false); }
   };
 
-  const handleInvite = async () => {
-    if (!inviteEmail.trim() || !currentOrg) return;
-    try {
-      await inviteMember(currentOrg.id, inviteEmail);
-      setModal({ isOpen: true, title: "Invite sent", message: `Invitation sent to ${inviteEmail}`, type: "success" });
-      setInviteEmail("");
-    } catch (err) {
-      setModal({ isOpen: true, title: "Error", message: err.message, type: "error" });
-    }
-  };
+  const handleInvite = async (type = 'standard') => {
+  // 1. Basic Check
+  if (!inviteEmail.trim() || !currentOrg) return;
+
+  try {
+    // 2. The Data Package
+    const payload = {
+      recipient_email: inviteEmail,
+      invite_type: type, // 'standard', 'anyway', or 'with_message'
+      personal_note: type === 'with_message' ? customMessage : null
+    };
+
+    const orgId = currentOrg._id || currentOrg.id;
+    await inviteMember(orgId, payload);
+
+    // 3. Human Success Feedback
+    setModal({ 
+      isOpen: true, 
+      title: "Invite Sent", 
+      message: type === 'with_message' 
+        ? `We've sent your invite and personal note to ${inviteEmail}.` 
+        : `Invitation successfully sent to ${inviteEmail}.`, 
+      type: "success" 
+    });
+
+    // 4. Cleanup
+    setInviteEmail("");
+    setCustomMessage("");
+    setShowCustomMessage(false);
+    setTargetLimitStatus(null);
+    
+  } catch (err) {
+    setModal({ 
+      isOpen: true, 
+      title: "Invite Failed", 
+      message: err.message || "Something went wrong while sending the invite. Please try again.", 
+      type: "error" 
+    });
+  }
+};
 
   // --- NEW MEMBER HIERARCHY LOGIC ---
-  const fetchTeamMembers = useCallback(async () => {
-    if (!currentOrg) return;
-    
-    console.log(`[DEBUG] Fetching members for UI: ${currentOrg.id}`);
-    setLoadingMembers(true);
-    try {
-      const data = await getOrgMembers(currentOrg.id);
-      setOrgMembers(data || []);
-    } catch (err) {
-      console.error("[DEBUG] Failed to load members", err);
-    } finally {
-      setLoadingMembers(false);
-    }
-  }, [currentOrg]);
+ const fetchTeamMembers = useCallback(async () => {
+  if (!currentOrg) return;
+  
+  setLoadingMembers(true);
+  try {
+    const data = await getOrgMembers(currentOrg.id);
+    setOrgMembers(data || []);
+  } catch (err) {
+    // 1. Check for the 403 Access Denied error
+    // Note: Use err.status or err.response?.status depending on your API wrapper
+    if (err.status === 403 || err.response?.status === 403) {
+      console.warn(`[SECURITY] Access revoked for Org: ${currentOrg.id}`);
+      
+      // 2. Trigger a professional informative modal
+      setModal({
+        isOpen: true,
+        type: "error",
+        title: "Access revoked",
+        message: "You are no longer an active member of this organization. To maintain system integrity, your workspace context has been reset to your personal profile."
+      });
 
-  // Listen for changes: if we are in the org tab and have an org, fetch members
-  useEffect(() => {
-    if (activeTab === 'organization' && currentOrg) {
-      fetchTeamMembers();
+      // 3. Auto-Evict: Clear the organization state and switch to Personal Context
+      setCurrentOrg(null);
+      setOrgMembers([]);
+      
+      // 4. Force a refresh of the dashboard to clear stale data
+      if (typeof refreshWorkspaceData === 'function') {
+        refreshWorkspaceData();
+      }
+    } else {
+      // Handle other types of errors (network issues, etc.)
+      console.error("[DEBUG] Failed to load members", err);
     }
-  }, [activeTab, currentOrg, fetchTeamMembers]);
+  } finally {
+    setLoadingMembers(false);
+  }
+}, [currentOrg, setCurrentOrg, setModal, refreshWorkspaceData]);
+
+// Listen for tab and organization changes
+useEffect(() => {
+  if (activeTab === 'organization' && currentOrg) {
+    fetchTeamMembers();
+  }
+}, [activeTab, currentOrg, fetchTeamMembers]);
 
   // Stub for Step 4
    const handleRemoveMember = (memberId) => {
@@ -478,9 +553,71 @@ const handleInviteAction = async (orgId, action) => {
       setModal({ ...modal, isOpen: false });
     }
   };
-const displayOrgName = currentOrg?.name || organizations?.[0]?.name || "Active organization";
 
-  
+const handleLeaveOrg = (orgId) => {
+  // Ensure we are getting a real ID
+  const targetId = orgId || currentOrg?._id || currentOrg?.id;
+
+  setModal({
+    isOpen: true,
+    type: "confirm",
+    title: "Relinquish Membership",
+    message: "Are you sure? You will lose access to this organization's private logic arenas instantly.",
+    onConfirm: async () => {
+      try {
+        await leaveOrganization(targetId);
+
+        // FIX: Use the correct setter name from your useState
+        if (typeof setCurrentOrg === 'function') {
+           setCurrentOrg(null); 
+        }
+        
+        if (typeof refreshOrgs === 'function') refreshOrgs();
+
+        setModal({
+          isOpen: true,
+          type: "success",
+          title: "Exit Successful",
+          message: "You have successfully left the organization."
+        });
+      } catch (err) {
+        setModal({
+          isOpen: true,
+          type: "error",
+          title: "Action Failed",
+          message: err.message || "Membership record not found on server."
+        });
+      }
+    }
+  });
+};
+
+const checkLimit = async (email) => {
+  // Only check if it's a valid-looking email to save server resources
+  if (!email.includes('@') || !email.includes('.')) return;
+
+  setIsCheckingLimit(true);
+  try {
+    const data = await checkUserOrgLimit(email); // This hits your new /check-limit endpoint
+    setTargetLimitStatus(data);
+  } catch (err) {
+    console.error("Limit check failed", err);
+  } finally {
+    setIsCheckingLimit(false);
+  }
+};
+
+
+const displayOrgName = currentOrg?.name || organizations?.[0]?.name || "Active organization";
+const ownedOrg = organizations?.find(org => String(org.owner_id) === String(user?.id));
+
+// This specifically tracks if the 'Founder Slot' (1/1) is filled
+const hasOwnedOrg = !!ownedOrg;
+const isViewingOthersOrg = currentOrg && currentOrg.owner_id !== user?.id;
+// Add this right at the start of the currentOrg block
+const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || "");
+
+
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-300 font-sans pb-20 antialiased">
@@ -551,7 +688,7 @@ const displayOrgName = currentOrg?.name || organizations?.[0]?.name || "Active o
               {activeTab === 'organization' && (
               <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
                 
-                {(user?.organization_id || (organizations && organizations.length > 0)) ? (
+                {hasOwnedOrg ? (
                 
 
                     <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -800,7 +937,7 @@ const displayOrgName = currentOrg?.name || organizations?.[0]?.name || "Active o
 
 
                 {/* 2. PENDING INVITATIONS */}
-                {invites && invites.length > 0 && (
+                {!isViewingOthersOrg && invites && invites.length > 0 && (
                   <section className="space-y-6 animate-in zoom-in-95 duration-500">
                     <header className="border-b border-zinc-800 pb-4 flex justify-between items-end">
                       <div>
@@ -913,22 +1050,116 @@ const displayOrgName = currentOrg?.name || organizations?.[0]?.name || "Active o
                 {currentOrg && (
                   <div className="space-y-12 animate-in fade-in duration-500">
                     {/* Invitation Controls */}
-                    <section className="space-y-6">
-                      <header className="border-b border-zinc-800 pb-4">
-                        <h2 className="text-sm font-medium text-white">Manage {currentOrg.name}</h2>
-                        <p className="text-[11px] text-zinc-500 mt-1">Invite creators and manage access levels for this community.</p>
-                      </header>
-                      <div className="flex gap-4">
-                        <input 
-                          type="email" 
-                          value={inviteEmail}
-                          onChange={(e) => setInviteEmail(e.target.value)}
-                          placeholder="teammate@college.edu"
-                          className="flex-1 bg-zinc-900/50 border border-zinc-700 px-4 py-2 text-xs outline-none focus:border-zinc-400 placeholder:text-zinc-700"
-                        />
-                        <button onClick={handleInvite} className="px-6 py-2 border border-zinc-600 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800">Invite admin</button>
-                      </div>
-                    </section>
+                    {isActualOwner && (
+                      <section className="space-y-6">
+                        <header className="border-b border-zinc-800 pb-4 flex justify-between items-end">
+                          <div>
+                            <h2 className="text-sm font-medium text-white">Manage {currentOrg.name}</h2>
+                            <p className="text-[11px] text-zinc-500 mt-1">Invite creators and manage access levels for this community.</p>
+                          </div>
+                          {/* Visual pulse while checking capacity */}
+                          {isCheckingLimit && (
+                            <span className="text-[9px] font-mono text-zinc-500 animate-pulse pb-1">Verifying capacity...</span>
+                          )}
+                        </header>
+
+                        <div className="space-y-4">
+                          <div className="flex gap-4">
+                            <input 
+                              type="email" 
+                              value={inviteEmail}
+                              onChange={(e) => {
+                                const email = e.target.value;
+                                setInviteEmail(email);
+                                if (!email) {
+                                  setTargetLimitStatus(null);
+                                  setShowCustomMessage(false);
+                                  return;
+                                }
+                                checkLimit(email); // Trigger the peek
+                              }}
+                              placeholder="teammate@college.edu"
+                              className="flex-1 bg-zinc-900/50 border border-zinc-700 px-4 py-2 text-xs outline-none focus:border-zinc-400 placeholder:text-zinc-700 transition-all"
+                            />
+                            
+                            {/* Only show the standard button if the target isn't already full */}
+                            {!targetLimitStatus?.is_full && (
+                              <button 
+                                onClick={() => handleInvite('standard')} 
+                                disabled={isCheckingLimit || !inviteEmail}
+                                className="px-6 py-2 border border-zinc-600 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                              >
+                                Invite admin
+                              </button>
+                            )}
+                          </div>
+
+                                                      {/* THE MORPH: Only appears if the target user has already joined another organization */}
+                            {targetLimitStatus?.is_full && (
+                              <div className="animate-in fade-in slide-in-from-top-2 duration-300 p-5 border border-amber-500/20 bg-amber-500/5 space-y-4 rounded-sm">
+                                <div className="flex items-start gap-3">
+                                  <div className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                                  <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
+                                      Membership conflict detected
+                                    </p>
+                                    <p className="text-[12px] text-zinc-400 leading-relaxed">
+                                      <span className="text-zinc-200 font-medium">{targetLimitStatus.username}</span> is already an active member of another organization. While they can receive your invite, they must leave their current workspace before they can join yours.
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                  <button 
+                                    onClick={() => handleInvite('anyway')}
+                                    className="flex-1 py-2 bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px] font-bold hover:text-white hover:border-zinc-700 transition-all"
+                                  >
+                                    Send invitation anyway
+                                  </button>
+                                  <button 
+                                    onClick={() => setShowCustomMessage(!showCustomMessage)}
+                                    className={`flex-1 py-2 text-[10px] font-bold transition-all border ${
+                                      showCustomMessage 
+                                        ? 'bg-white text-black border-white' 
+                                        : 'bg-zinc-100/5 text-white border-zinc-800 hover:bg-zinc-100/10'
+                                    }`}
+                                  >
+                                    {showCustomMessage ? "Discard note" : "Add personal note"}
+                                  </button>
+                                </div>
+
+                                {/* INLINE EXPANSION: The Priority Message Box */}
+                                {showCustomMessage && (
+                                  <div className="animate-in zoom-in-95 duration-200 pt-2 space-y-3">
+                                    <div className="relative">
+                                      <textarea 
+                                        value={customMessage}
+                                        onChange={(e) => setCustomMessage(e.target.value)}
+                                        placeholder="Explain why they should join your logic arena..."
+                                        className="w-full bg-black border border-zinc-800 p-4 text-[11px] text-zinc-300 outline-none focus:border-zinc-600 min-h-[100px] resize-none leading-relaxed"
+                                      />
+                                      <div className="absolute top-0 right-0 p-2">
+                                        <span className="text-[9px] text-zinc-600 font-mono uppercase">Priority Note</span>
+                                      </div>
+                                    </div>
+                                    
+                                    <p className="text-[10px] text-zinc-500 italic px-1">
+                                      Direct messages increase the likelihood of a creator switching organizations.
+                                    </p>
+
+                                    <button 
+                                      onClick={() => handleInvite('with_message')}
+                                      className="w-full py-2.5 bg-white text-black text-[10px] font-bold hover:bg-zinc-200 transition-colors shadow-lg shadow-white/5"
+                                    >
+                                      Send priority invitation
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                        </div>
+                      </section>
+                    )}
 
                     {/* 5. CREATOR DIRECTORY (Member Hierarchy) */}
                     <section className="space-y-6">
@@ -985,20 +1216,27 @@ const displayOrgName = currentOrg?.name || organizations?.[0]?.name || "Active o
                                     <p className="text-[9px] text-zinc-700 italic mt-0.5">Joined via invite</p>
                                   )}
                                 </div>
+                                <div className="flex items-center gap-4">
+                                  {/* Option A: The Owner removing someone else */}
+                                  {isOwnerOfOrg && !isSelf && (
+                                    <button 
+                                      onClick={() => handleRemoveMember(memberUserId)}
+                                      className="opacity-0 group-hover:opacity-100 text-[10px] text-zinc-500 hover:text-red-500 font-bold tracking-tighter transition-all"
+                                    >
+                                      Remove
+                                    </button>
+                                  )}
 
-                                {/* 
-                                  ACTION GUARD: 
-                                  1. Only show if the logged-in user is the Owner
-                                  2. Hide for the Owner's own row (prevent self-deletion) 
-                                */}
-                                {isOwnerOfOrg && !isSelf && (
-                                  <button 
-                                    onClick={() => handleRemoveMember(memberUserId)}
-                                    className="opacity-0 group-hover:opacity-100 text-[10px] text-zinc-500 hover:text-red-500 font-bold uppercase tracking-tighter transition-all"
-                                  >
-                                    Remove
-                                  </button>
-                                )}
+                                  {/* Option B: A Member leaving on their own */}
+                                  {isSelf && !isOwnerOfOrg && (
+                                    <button 
+                                      onClick={() => handleLeaveOrg(currentOrg.id)}
+                                      className="text-[10px] text-zinc-500 hover:text-red-500 font-bold tracking-tighter transition-all"
+                                    >
+                                      Leave Organization
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           );
@@ -1058,59 +1296,59 @@ const displayOrgName = currentOrg?.name || organizations?.[0]?.name || "Active o
 
              <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 bg-zinc-900/20 p-6 border border-zinc-800/50 items-center">
   
-  {currentOrg ? (
-    /* -----------------------------------------------------------
-       Community mode: Gated by default
-    ----------------------------------------------------------- */
-    <>
-      <div className="space-y-2 animate-in slide-in-from-left-2 duration-300">
-        <label className="text-[11px] font-medium text-zinc-300">Access pin</label>
-        <input 
-          type="text" 
-          maxLength={6}
-          value={formData.access_code}
-          onChange={(e) => setFormData({...formData, access_code: e.target.value.replace(/\D/g,'')})}
-          placeholder="000000"
-          className="w-full bg-zinc-950 border border-zinc-700 px-3 py-2 text-xs font-mono text-emerald-400 outline-none focus:border-zinc-500 transition-all placeholder:text-zinc-800"
-        />
-      </div>
+                {currentOrg ? (
+                  /* -----------------------------------------------------------
+                    Community mode: Gated by default
+                  ----------------------------------------------------------- */
+                  <>
+                    <div className="space-y-2 animate-in slide-in-from-left-2 duration-300">
+                      <label className="text-[11px] font-medium text-zinc-300">Access pin</label>
+                      <input 
+                        type="text" 
+                        maxLength={6}
+                        value={formData.access_code}
+                        onChange={(e) => setFormData({...formData, access_code: e.target.value.replace(/\D/g,'')})}
+                        placeholder="000000"
+                        className="w-full bg-zinc-950 border border-zinc-700 px-3 py-2 text-xs font-mono text-emerald-400 outline-none focus:border-zinc-500 transition-all placeholder:text-zinc-800"
+                      />
+                    </div>
 
-      <div className="lg:col-span-2 flex flex-col justify-center items-end text-right space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium text-zinc-200">
-            Part of {currentOrg.name}
-          </span>
-        </div>
-        <p className="text-[11px] text-zinc-500 italic">
-          This assessment is managed by your community.
-        </p>
-      </div>
-    </>
-  ) : (
-    /* -----------------------------------------------------------
-       Personal lab: Open access by default
-    ----------------------------------------------------------- */
-    <div className="col-span-full flex items-center justify-between">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium text-zinc-300">
-            Personal lab
-          </span>
-        </div>
-        <p className="text-[11px] text-zinc-500">This will be visible on the global hallway.</p>
-      </div>
-      
-      <div className="h-px flex-1 mx-12 bg-zinc-800/40 hidden md:block" />
-      
-      <div className="text-right">
-        <span className="text-[11px] text-zinc-500 italic">
-          Access: Open
-        </span>
-      </div>
-    </div>
-  )}
-</div>
-            </header>
+                    <div className="lg:col-span-2 flex flex-col justify-center items-end text-right space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-zinc-200">
+                          Part of {currentOrg.name}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 italic">
+                        This assessment is managed by your community.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  /* -----------------------------------------------------------
+                    Personal lab: Open access by default
+                  ----------------------------------------------------------- */
+                  <div className="col-span-full flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-zinc-300">
+                          Personal lab
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500">This will be visible on the global hallway.</p>
+                    </div>
+                    
+                    <div className="h-px flex-1 mx-12 bg-zinc-800/40 hidden md:block" />
+                    
+                    <div className="text-right">
+                      <span className="text-[11px] text-zinc-500 italic">
+                        Access: Open
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+                          </header>
 
             <div className="space-y-20">
               {formData.questions.map((q, qIndex) => (
