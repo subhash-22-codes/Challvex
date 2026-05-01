@@ -312,7 +312,7 @@ const confirmSubmit = async () => {
     </div>
   );
 
-  return (
+ return (
     <div className="h-screen bg-[#09090b] text-zinc-300 flex flex-col font-sans overflow-hidden relative">
       
       {/* 1. START OVERLAY */}
@@ -324,14 +324,14 @@ const confirmSubmit = async () => {
               <h2 className="text-base font-medium text-white tracking-tight">
                 {challenge?.title}
               </h2>
-              <p className="text-[11px] text-zinc-500 leading-relaxed">
+              <p className="text-[11px] text-zinc-500 leading-relaxed italic">
                 You will have {challenge?.total_time} minutes to complete this challenge.
               </p>
             </div>
 
             <button 
               onClick={startSession} 
-              className="w-full py-3 bg-zinc-100 text-zinc-950 text-[11px] font-medium hover:bg-white transition-colors rounded-none"
+              className="w-full py-3 bg-zinc-100 text-zinc-950 text-[11px] font-semibold hover:bg-white transition-colors rounded-none"
             >
               Start assessment
             </button>
@@ -339,14 +339,15 @@ const confirmSubmit = async () => {
           </div>
         </div>
       )}
+
       {/* 2. NAVIGATION */}
-      <nav className="h-14 border-b border-zinc-800/50 flex items-center px-6 shrink-0 bg-[#09090b] justify-between z-[100]">
+      <nav className="h-14 border-b border-zinc-800/50 flex items-center px-4 sm:px-6 shrink-0 bg-[#09090b] justify-between z-[100]">
         <div className="flex items-center gap-4 w-1/3">
-          <button onClick={() => isViewOnly ? navigate("/dashboard") : setShowLeaveModal(true)} className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors">
+          <button onClick={() => isViewOnly ? navigate("/dashboard") : setShowLeaveModal(true)} className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors whitespace-nowrap">
             Back to Dashboard
           </button>
-          <div className="h-3 w-[1px] bg-zinc-800"></div>
-          <span className="text-[11px] font-medium text-zinc-100 truncate">{challenge?.title}</span>
+          <div className="h-3 w-[1px] bg-zinc-800 hidden sm:block"></div>
+          <span className="text-[11px] font-medium text-zinc-100 truncate hidden lg:block">{challenge?.title}</span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -360,10 +361,10 @@ const confirmSubmit = async () => {
                 onClick={() => handleQuestionSwitch(idx)} 
                 className={`w-6 h-6 rounded-none text-[10px] font-medium transition-all border ${
                   isActive
-                    ? 'bg-zinc-100 text-zinc-950 border-zinc-100' // Current
+                    ? 'bg-zinc-100 text-zinc-950 border-zinc-100'
                     : isSaved
-                      ? 'bg-zinc-800 text-zinc-200 border-zinc-700' // Finished
-                      : 'text-zinc-600 border-zinc-800 hover:border-zinc-700' // Pending
+                      ? 'bg-zinc-800 text-zinc-200 border-zinc-700'
+                      : 'text-zinc-600 border-zinc-800 hover:border-zinc-700'
                 }`}
               >
                 {idx + 1}
@@ -375,35 +376,33 @@ const confirmSubmit = async () => {
         <div className="flex items-center justify-end gap-5 w-1/3">
            <button 
              onClick={() => !isViewOnly && setTimerActive(!timerActive)}
-             className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+             className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors hidden sm:block"
            >
              {timerActive ? 'Pause' : 'Resume'}
            </button>
-           <div className={`font-mono text-xs px-3 py-1 rounded border transition-colors ${timeLeft < 300 ? 'text-red-400 border-red-500/20 bg-red-400/5' : 'text-zinc-300 border-zinc-800 bg-zinc-900/30'}`}>
+           <div className={`font-mono text-xs px-3 py-1 border transition-colors tabular-nums ${timeLeft < 300 ? 'text-red-400 border-red-500/20 bg-red-400/5' : 'text-zinc-300 border-zinc-800 bg-zinc-900/30'}`}>
              {formatTime(timeLeft)}
            </div>
         </div>
       </nav>
 
       {/* 3. WORKSPACE */}
-     <div className="flex-1 flex overflow-hidden">
+     <div className="flex-1 flex overflow-hidden flex-col md:flex-row">
   
       {/* Left: Problem specification */}
-      <div className="w-1/2 overflow-y-auto p-8 lg:p-12 border-r border-zinc-800 bg-[#09090b] custom-scrollbar">
+      <div className="w-full md:w-1/2 overflow-y-auto p-6 sm:p-10 lg:p-12 border-r border-zinc-800 bg-[#09090b] custom-scrollbar">
         <div className="max-w-2xl mx-auto space-y-10 animate-in fade-in slide-in-from-left-4 duration-600">
           
-          {/* Breadcrumb & Navigation */}
-          <nav className="-mt-2 mb-1 flex items-center gap-2">
-            <span className="text-[10px] text-zinc-400 font-medium tracking-wide">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-500 font-medium">
               Question {activeQ + 1}
             </span>
-          </nav>
+          </div>
 
-          {/* Header section */}
-          <header className="mb-3 space-y-2">
+          <header className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               <div
-                className={`px-2 py-0.5 text-[9px] font-bold border tracking-widest ${
+                className={`px-2 py-0.5 text-[9px] font-bold border tracking-wider ${
                   challenge?.questions[activeQ].difficulty === "Hard"
                     ? "border-red-900/50 text-red-500 bg-red-500/5"
                     : "border-emerald-900/50 text-emerald-500 bg-emerald-500/5"
@@ -412,53 +411,42 @@ const confirmSubmit = async () => {
                 {challenge?.questions[activeQ].difficulty}
               </div>
 
-              <span className="text-[10px] text-zinc-500 italic leading-none">
+              <span className="text-[10px] text-zinc-500 italic">
                 Estimated time: {challenge?.total_time} minutes
               </span>
             </div>
 
-            <h1 className="text-2xl font-medium text-white tracking-tight leading-snug">
+            <h1 className="text-xl sm:text-2xl font-medium text-white tracking-tight leading-snug">
               {challenge?.questions[activeQ].title}
             </h1>
           </header>
 
-          {/* Problem storyline */}
           <article className="max-w-none text-[13px] text-zinc-300 prose prose-invert prose-p:my-0 prose-li:my-0">
             <Markdown
               components={{
-                p: ({ node, ...props }) => (
-                  <p className="mb-2 leading-6" {...props} />
+                p: ({ children }) => (
+                  <p className="mb-3 leading-6">{children}</p>
                 ),
-
-                h2: ({ node, ...props }) => (
-                  <h2 className="mt-5 mb-2 text-sm font-semibold text-white" {...props} />
+                h2: ({ children }) => (
+                  <h2 className="mt-6 mb-3 text-sm font-semibold text-white">{children}</h2>
                 ),
-
-                h3: ({ node, ...props }) => (
-                  <h3 className="mt-4 mb-2 text-sm font-semibold text-white" {...props} />
+                h3: ({ children }) => (
+                  <h3 className="mt-5 mb-2 text-sm font-semibold text-white">{children}</h3>
                 ),
-
-                ul: ({ node, ...props }) => (
-                  <ul className="mb-2 list-disc pl-5 space-y-0" {...props} />
+                ul: ({ children }) => (
+                  <ul className="mb-4 list-disc pl-5 space-y-1">{children}</ul>
                 ),
-
-                ol: ({ node, ...props }) => (
-                  <ol className="mb-2 list-decimal pl-5 space-y-0" {...props} />
+                ol: ({ children }) => (
+                  <ol className="mb-4 list-decimal pl-5 space-y-1">{children}</ol>
                 ),
-
-                li: ({ node, ...props }) => (
-                  <li className="leading-6" {...props} />
+                li: ({ children }) => (
+                  <li className="leading-6">{children}</li>
                 ),
-
-                pre: ({ node, ...props }) => (
-                  <pre className="my-3 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3" {...props} />
+                pre: ({ children }) => (
+                  <pre className="my-4 overflow-x-auto rounded-none border border-zinc-800 bg-zinc-950 px-4 py-3">{children}</pre>
                 ),
-
-                code: ({ node, children, ...props }) => (
-                  <code
-                    className="rounded bg-zinc-800/80 px-1 py-0.5 text-[11px] text-zinc-200 font-mono"
-                    {...props}
-                  >
+                code: ({ children }) => (
+                  <code className="rounded bg-zinc-800/80 px-1 py-0.5 text-[11px] text-zinc-200 font-mono">
                     {children}
                   </code>
                 ),
@@ -468,33 +456,30 @@ const confirmSubmit = async () => {
             </Markdown>
           </article>
 
-          {/* Technical specifications */}
-          <section className="space-y-8">
-            <div className="grid grid-cols-1 gap-5">
+          <section className="space-y-10">
+            <div className="grid grid-cols-1 gap-6">
               {[
                 { label: "Input format", content: challenge?.questions[activeQ].input_format },
                 { label: "Output format", content: challenge?.questions[activeQ].output_format },
                 { label: "Constraints", content: challenge?.questions[activeQ].constraints },
               ].map((item) => (
                 <div key={item.label} className="space-y-2">
-                  <h3 className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                  <h3 className="text-[11px] font-medium text-zinc-500">
                     {item.label}
                   </h3>
-
-                  <pre className="overflow-x-auto border border-zinc-800 bg-zinc-900/30 px-4 py-3 text-[11px] leading-4 text-zinc-300 font-mono whitespace-pre-wrap">
+                  <pre className="overflow-x-auto border border-zinc-800 bg-zinc-900/30 px-4 py-3 text-[11px] leading-relaxed text-zinc-300 font-mono whitespace-pre-wrap italic">
                     {item.content?.trim()?.replace(/\n{3,}/g, "\n\n") || ""}
                   </pre>
                 </div>
               ))}
             </div>
             
-            {/* Examples section */}
             <div className="space-y-5 pt-2">
               <h3 className="text-[11px] font-medium text-zinc-500">Examples</h3>
               <div className="space-y-4">
                 {challenge?.questions[activeQ].samples.map((s, i) => (
-                  <div key={i} className="border border-zinc-800 rounded-none bg-zinc-900/10 overflow-hidden">
-                    <div className="grid grid-cols-2 divide-x divide-zinc-800 border-b border-zinc-800">
+                  <div key={i} className="border border-zinc-800 bg-[#0c0c0e]">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-zinc-800 border-b border-zinc-800">
                       <div className="p-4">
                         <span className="text-[10px] text-zinc-600 font-medium block mb-2">Input</span>
                         <pre className="text-[11px] font-mono text-zinc-300 whitespace-pre-wrap">{s.input_data}</pre>
@@ -505,7 +490,7 @@ const confirmSubmit = async () => {
                       </div>
                     </div>
                     {s.explanation && (
-                      <div className="p-4 bg-zinc-950/40 border-t border-zinc-800/50">
+                      <div className="p-4 bg-zinc-950/40">
                         <span className="text-[10px] text-zinc-600 font-medium block mb-1">Explanation</span>
                         <div className="text-[11px] text-zinc-400 italic leading-relaxed whitespace-pre-wrap">
                           {s.explanation}
@@ -521,11 +506,9 @@ const confirmSubmit = async () => {
       </div>
 
       {/* Right: Code editor & execution */}
-      <div className="w-1/2 flex flex-col bg-[#0c0c0e] relative h-full">
-        
-        {/* Editor toolbar */}
+      <div className="w-full md:w-1/2 flex flex-col bg-[#0c0c0e] relative h-full">
         <div className="h-10 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-900/20 shrink-0">
-          <span className="text-[10px] text-zinc-500 font-mono tracking-wider">
+          <span className="text-[10px] text-zinc-500 font-mono">
             solution.{langPref[activeQ] === 'python' ? 'py' : 'java'}
           </span>
           <select 
@@ -548,7 +531,6 @@ const confirmSubmit = async () => {
           </select>
         </div>
 
-        {/* Editor workspace */}
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#0c0c0e]">
           <Editor
               value={currentCode}
@@ -567,24 +549,21 @@ const confirmSubmit = async () => {
             />
         </div>
 
-        {/* Terminal / Console Overlay */}
         {terminalOpen && (
           <div 
-            style={{ height: terminalHeight || '300px' }} // Dynamic height from state
+            style={{ height: terminalHeight || '300px' }}
             className="absolute bottom-14 left-0 right-0 bg-[#09090b] border-t border-zinc-700 z-50 flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-200"
           >
-            {/* Resizer handle: Grab this to stretch/shrink */}
             <div 
-              onMouseDown={handleTerminalResize} // Logic to handle the drag
+              onMouseDown={handleTerminalResize} 
               className="h-1 cursor-row-resize hover:bg-zinc-500/30 transition-colors shrink-0" 
             />
 
-            {/* Console header */}
             <div className="h-9 border-b border-zinc-800 flex items-center justify-between px-4 bg-zinc-950 shrink-0">
               <span className="text-[10px] font-medium text-zinc-400">Terminal output</span>
               <button 
                 onClick={() => setTerminalOpen(false)} 
-                className="text-zinc-500 hover:text-zinc-100 text-lg transition-colors"
+                className="text-zinc-500 hover:text-zinc-100 text-lg transition-colors leading-none"
               >
                 &times;
               </button>
@@ -594,12 +573,11 @@ const confirmSubmit = async () => {
               {isExecuting ? (
                 <div className="text-zinc-600 italic text-center mt-10">Initializing execution environment...</div>
               ) : (
-                <div className="space-y-6 max-w-3xl">
-                  {/* Error handling */}
+                <div className="space-y-6 max-w-4xl">
                   {(testResults?.status === "COMPILATION_ERROR" || testResults?.test_results?.some(r => r.status === "RUNTIME_ERROR")) && (
-                    <div className="bg-red-500/5 border border-red-900/30 p-4 rounded-none">
-                      <span className="text-red-500 font-bold text-[10px] block mb-2">Execution error</span>
-                      <pre className="text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                    <div className="bg-red-500/5 border border-red-900/30 p-4">
+                      <span className="text-red-500 font-semibold text-[10px] block mb-2">Execution error</span>
+                      <pre className="text-zinc-300 whitespace-pre-wrap leading-relaxed italic">
                         {testResults?.status === "COMPILATION_ERROR" 
                           ? testResults.message 
                           : testResults.test_results.find(r => r.status === "RUNTIME_ERROR")?.message}
@@ -609,18 +587,16 @@ const confirmSubmit = async () => {
 
                   {testResults?.test_results && (() => {
                     const results = testResults.test_results;
-                    const totalCases = results.length;
                     const passedCases = results.filter(item => item.passed).length;
                     const hiddenFailed = results.filter(item => !item.is_public && !item.passed).length;
                     const publicResults = results.filter(item => item.is_public);
 
                     return (
                       <div className="space-y-6">
-                        {/* Summary metrics */}
-                        <div className="border border-zinc-800 bg-zinc-900/30 p-4 flex items-center justify-between rounded-none">
+                        <div className="border border-zinc-800 bg-zinc-900/30 p-4 flex items-center justify-between">
                           <div className="space-y-1">
                             <p className="text-[11px] font-medium text-white">Test results summary</p>
-                            <p className="text-[10px] text-zinc-500">Passed {passedCases} out of {totalCases} test cases</p>
+                            <p className="text-[10px] text-zinc-500">Passed {passedCases} out of {results.length} test cases</p>
                           </div>
                           {hiddenFailed > 0 && (
                             <span className="text-[10px] font-medium text-amber-500 bg-amber-500/5 border border-amber-900/30 px-2 py-0.5">
@@ -629,7 +605,6 @@ const confirmSubmit = async () => {
                           )}
                         </div>
 
-                        {/* Case list */}
                         <div className="space-y-3">
                           {publicResults.map((res, i) => {
                             const displayStatus = res.status 
@@ -637,13 +612,13 @@ const confirmSubmit = async () => {
                               : (res.passed ? "Passed" : "Failed");
 
                             return (
-                              <div key={i} className="border border-zinc-800 bg-zinc-950 p-4 space-y-4 rounded-none">
+                              <div key={i} className="border border-zinc-800 bg-zinc-950 p-4 space-y-4">
                                 <div className="flex items-start justify-between">
                                   <div className="space-y-0.5">
                                     <p className={`text-[11px] font-bold ${res.passed ? "text-emerald-500" : "text-red-500"}`}>
                                       Case 0{res.case}
                                     </p>
-                                    <p className="text-[10px] text-zinc-600 italic font-sans">Public test case</p>
+                                    <p className="text-[10px] text-zinc-600 italic">Public test case</p>
                                   </div>
                                   <span className={`px-2 py-0.5 text-[9px] font-bold border rounded-none ${
                                     res.passed 
@@ -655,7 +630,7 @@ const confirmSubmit = async () => {
                                 </div>
 
                                 {res.status !== "RUNTIME_ERROR" && res.status !== "TIMEOUT" && (
-                                  <div className="grid grid-cols-1 gap-4 pt-3 border-t border-zinc-900 text-[10px] font-mono leading-relaxed">
+                                  <div className="grid grid-cols-1 gap-4 pt-3 border-t border-zinc-900 text-[10px] font-mono leading-relaxed italic">
                                     <div className="space-y-1">
                                       <span className="text-zinc-600 block">Input</span>
                                       <pre className="whitespace-pre-wrap text-zinc-400">{res.input}</pre>
@@ -667,7 +642,7 @@ const confirmSubmit = async () => {
                                       </div>
                                       <div className="space-y-1">
                                         <span className="text-zinc-600 block">Actual</span>
-                                        <pre className={`whitespace-pre-wrap ${res.passed ? "text-emerald-400" : "text-red-400"}`}>
+                                        <pre className={`whitespace-pre-wrap ${res.passed ? "text-emerald-500" : "text-red-400"}`}>
                                           {res.actual}
                                         </pre>
                                       </div>
@@ -687,7 +662,6 @@ const confirmSubmit = async () => {
           </div>
         )}
 
-        {/* Global action footer */}
         <footer className="h-14 border-t border-zinc-800 flex items-center justify-between px-6 bg-[#09090b] shrink-0 z-[60]">
           {!isViewOnly ? (
             <>
@@ -714,7 +688,7 @@ const confirmSubmit = async () => {
                 <button 
                   onClick={() => setShowSubmitModal(true)} 
                   disabled={!timerActive}
-                  className="bg-zinc-100 text-zinc-950 hover:bg-white text-[11px] font-medium px-5 py-1.5 rounded-none transition-colors disabled:opacity-30"
+                  className="bg-zinc-100 text-zinc-950 hover:bg-white text-[11px] font-semibold px-6 py-1.5 rounded-none transition-colors disabled:opacity-30"
                 >
                   Submit
                 </button>
@@ -725,7 +699,7 @@ const confirmSubmit = async () => {
               <div className="flex items-center gap-8">
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] text-zinc-500 font-medium">Result</span>
-                  <span className={`text-[11px] font-mono px-3 py-0.5 border rounded-none ${
+                  <span className={`text-[11px] font-mono px-3 py-1 border tabular-nums ${
                     submission?.status === 'reviewed' 
                       ? 'border-emerald-900/30 text-emerald-400 bg-emerald-500/5' 
                       : 'bg-zinc-900 border-zinc-800 text-zinc-500'
@@ -740,7 +714,7 @@ const confirmSubmit = async () => {
                     <span className="text-[11px] text-zinc-500 font-medium">Feedback</span>
                     <button 
                       onClick={() => setShowFeedbackModal(true)}
-                      className="text-[11px] text-zinc-300 hover:text-white transition-colors underline underline-offset-4 decoration-zinc-800"
+                      className="text-[11px] text-zinc-300 hover:text-white transition-colors underline underline-offset-8 decoration-zinc-800"
                     >
                       Read notes
                     </button>
@@ -750,7 +724,7 @@ const confirmSubmit = async () => {
 
               <button 
                 onClick={() => navigate("/dashboard")} 
-                className="text-[11px] font-medium text-zinc-500 hover:text-white bg-zinc-900 px-4 py-1.5 border border-zinc-800 rounded-none"
+                className="text-[11px] font-medium text-zinc-500 hover:text-white bg-zinc-900 px-4 py-1.5 border border-zinc-800 rounded-none transition-colors"
               >
                 Return to Dashboard
               </button>
@@ -760,17 +734,16 @@ const confirmSubmit = async () => {
       </div>
     </div>
 
-      {/* SUBMIT MODAL */}
       {showSubmitModal && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-200">
-          <div className="bg-[#0c0c0e] border border-zinc-800 rounded-lg p-6 max-w-sm w-full shadow-2xl">
+          <div className="bg-[#0c0c0e] border border-zinc-800 rounded-none p-8 max-w-sm w-full shadow-2xl">
             <h3 className="text-sm font-medium text-zinc-100 mb-2">Submit assessment?</h3>
-            <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+            <p className="text-xs text-zinc-400 mb-6 leading-relaxed italic border-l border-zinc-800 pl-4">
               You have saved {Object.keys(answers).length} out of {challenge?.questions.length} questions. You cannot edit your code after submitting.
             </p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowSubmitModal(false)} className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors">Cancel</button>
-              <button onClick={confirmSubmit} disabled={isSubmitting} className="px-4 py-2 text-xs font-medium bg-zinc-100 text-zinc-950 rounded hover:bg-white transition-colors disabled:opacity-50">
+              <button onClick={confirmSubmit} disabled={isSubmitting} className="px-5 py-2 text-xs font-bold bg-zinc-100 text-zinc-950 hover:bg-white transition-colors disabled:opacity-50">
                 {isSubmitting ? 'Submitting...' : 'Submit'}
               </button>
             </div>
@@ -778,26 +751,25 @@ const confirmSubmit = async () => {
         </div>
       )}
 
-      {/* LEAVE MODAL */}
       {showLeaveModal && (
         <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-200">
-          <div className="bg-[#0c0c0e] border border-zinc-800 rounded-lg p-6 max-w-sm w-full shadow-2xl">
+          <div className="bg-[#0c0c0e] border border-zinc-800 rounded-none p-8 max-w-sm w-full shadow-2xl">
             <h3 className="text-sm font-medium text-zinc-100 mb-2">Leave page?</h3>
-            <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+            <p className="text-xs text-zinc-400 mb-6 leading-relaxed italic border-l border-zinc-800 pl-4">
               Any unsaved code will be lost. The assessment timer will continue to run in the background.
             </p>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowLeaveModal(false)} className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors">Stay</button>
-              <button onClick={handleLeaveArena} className="px-4 py-2 text-xs font-medium bg-red-500/10 text-red-400 rounded hover:bg-red-500/20 transition-colors">Leave</button>
+              <button onClick={handleLeaveArena} className="px-5 py-2 text-xs font-bold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Leave</button>
             </div>
           </div>
         </div>
       )}
+
       {showFeedbackModal && (
         <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/80 backdrop-blur-sm p-6 animate-in fade-in duration-200">
           <div className="bg-[#0c0c0e] border border-zinc-800 rounded-none max-w-2xl w-full shadow-2xl flex flex-col max-h-[80vh]">
             
-            {/* Modal header */}
             <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/20">
               <h3 className="text-[13px] font-medium text-zinc-100">
                 Evaluation notes
@@ -810,19 +782,17 @@ const confirmSubmit = async () => {
               </div>
             </div>
 
-            {/* Modal body */}
             <div className="p-8 overflow-y-auto custom-scrollbar">
               <div className="space-y-4">
                 <label className="text-[10px] text-zinc-500 font-medium uppercase tracking-tight">
                   Feedback
                 </label>
-                <p className="text-[12px] text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
+                <p className="text-[12px] text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans italic border-l border-zinc-800 pl-4">
                   {submission?.feedback}
                 </p>
               </div>
             </div>
 
-            {/* Modal footer */}
             <div className="px-6 py-4 border-t border-zinc-800 flex justify-end bg-zinc-900/10">
               <button 
                 onClick={() => setShowFeedbackModal(false)} 

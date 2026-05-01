@@ -654,7 +654,7 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
       )}
 
       <nav className="border-b border-zinc-800 bg-[#09090b]/90 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-[1440px] mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-10">
             <span className="text-zinc-100 font-medium text-[13px] tracking-tight">
               {currentOrg ? currentOrg.name : "Global admin"}
@@ -683,7 +683,7 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto p-6 lg:p-10">
+      <main className="max-w-[1440px] mx-auto p-6 lg:p-10">
 
               {activeTab === 'organization' && (
               <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -700,7 +700,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                       </header>
 
                       <div className="bg-zinc-900/20 border border-zinc-800 p-5 rounded-sm flex items-center gap-5">
-                        {/* organization icon */}
                         <div className="w-12 h-12 bg-zinc-900 flex items-center justify-center rounded-sm border border-zinc-800 shrink-0">
                           <svg className="w-6 h-6 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -709,7 +708,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
 
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2">
-                            {/* using the fallback name so it never stays empty */}
                             <h3 className="text-sm font-semibold text-white tracking-tight">
                               {displayOrgName}
                             </h3>
@@ -719,7 +717,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                             </div>
                           </div>
 
-                          {/* status indicator */}
                           <div className="flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-[11px] text-zinc-500 font-medium tracking-tight">Verified and active</span>
@@ -729,7 +726,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                     </section>
                 ) : (
                 <section className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                  {/* Header: Clear and welcoming */}
                   <header className="border-b border-zinc-800 pb-6">
                     <div className="flex items-center gap-3 mb-2">
                       <h2 className="text-base font-medium text-white tracking-tight">Create your organization</h2>
@@ -738,7 +734,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                         <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-tight">Level 1</span>
                       </div>
                       
-                      {/* Information toggle */}
                       <button 
                         onClick={() => setShowWorkspaceNote(!showWorkspaceNote)}
                         className="text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -750,12 +745,10 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                       </button>
                     </div>
 
-                    {/* Note for (i) - Click to show */}
                 {showWorkspaceNote && (
                   <div className="mb-6 p-4 bg-zinc-900/40 border border-zinc-800 rounded-sm animate-in fade-in zoom-in-95 duration-200">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       
-                      {/* Personal workspace info */}
                       <div className="flex gap-3">
                         <div className="mt-1">
                           <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -770,7 +763,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                         </div>
                       </div>
 
-                      {/* Organization workspace info */}
                       <div className="flex gap-3">
                         <div className="mt-1">
                           <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -794,9 +786,7 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                     </p>
                   </header>
 
-                  {/* Info cards: Stars and teamwork */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* The star system */}
                     <div className="bg-zinc-900/20 border border-zinc-800 p-5 space-y-4 rounded-sm">
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full bg-amber-500/10 flex items-center justify-center">
@@ -809,7 +799,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                         Every new community starts with 1 star. As you post active challenges and get great feedback from solvers, your rating grows. A <span className="text-amber-500 font-semibold">5-star rating</span> signals you as a top-tier industry leader.
                       </p>
 
-                      {/* Star progress table */}
                       <div className="border border-zinc-800/50 rounded-sm overflow-hidden">
                         <table className="w-full text-[10px] text-left">
                           <thead className="bg-zinc-800/30 text-zinc-500 font-medium">
@@ -838,7 +827,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                       </div>
                     </div>
 
-                    {/* Teamwork and invites */}
                     <div className="bg-zinc-900/20 border border-zinc-800 p-5 space-y-5 rounded-sm flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
@@ -853,7 +841,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                       Don't build alone! You can invite other developers to join your organization as members. Together, you can create harder puzzles, review submissions, and manage your community tests.
                     </p>
 
-                    {/* Naming best practices with visual indicators */}
                     <div className="space-y-2 pt-2">
                       <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">Naming best practices</p>
                       <div className="grid gap-1.5">
@@ -881,7 +868,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                 </div>
                   </div>
 
-                  {/* The form */}
                   <div className="space-y-4 pt-2">
                     <div className="flex flex-col sm:flex-row gap-3">
                       <div className="flex-1 relative group">
@@ -936,7 +922,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
               )}
 
 
-                {/* 2. PENDING INVITATIONS */}
                 {!isViewingOthersOrg && invites && invites.length > 0 && (
                   <section className="space-y-6 animate-in zoom-in-95 duration-500">
                     <header className="border-b border-zinc-800 pb-4 flex justify-between items-end">
@@ -981,7 +966,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                   </section>
                 )}
 
-                {/* 3. WORKSPACE SWITCHER */}
                <section className="space-y-6 animate-in fade-in duration-700">
                   <header className="border-b border-zinc-800 pb-4">
                     <h2 className="text-sm font-medium text-white tracking-tight">Switch environment</h2>
@@ -991,7 +975,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                   </header>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Personal environment tile */}
                     <button
                       onClick={() => switchOrg(null)} 
                       className={`flex items-start justify-between p-4 border transition-all text-left rounded-sm group ${
@@ -1016,7 +999,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                       )}
                     </button>
 
-                    {/* Organization environment tile(s) */}
                     {organizations.map((org) => (
                       <button
                         key={org.id}
@@ -1046,10 +1028,8 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                   </div>
                 </section>
 
-                {/* 4. MANAGE & DIRECTORY SECTION */}
                 {currentOrg && (
                   <div className="space-y-12 animate-in fade-in duration-500">
-                    {/* Invitation Controls */}
                     {isActualOwner && (
                       <section className="space-y-6">
                         <header className="border-b border-zinc-800 pb-4 flex justify-between items-end">
@@ -1057,7 +1037,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                             <h2 className="text-sm font-medium text-white">Manage {currentOrg.name}</h2>
                             <p className="text-[11px] text-zinc-500 mt-1">Invite creators and manage access levels for this community.</p>
                           </div>
-                          {/* Visual pulse while checking capacity */}
                           {isCheckingLimit && (
                             <span className="text-[9px] font-mono text-zinc-500 animate-pulse pb-1">Verifying capacity...</span>
                           )}
@@ -1082,7 +1061,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                               className="flex-1 bg-zinc-900/50 border border-zinc-700 px-4 py-2 text-xs outline-none focus:border-zinc-400 placeholder:text-zinc-700 transition-all"
                             />
                             
-                            {/* Only show the standard button if the target isn't already full */}
                             {!targetLimitStatus?.is_full && (
                               <button 
                                 onClick={() => handleInvite('standard')} 
@@ -1094,74 +1072,71 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                             )}
                           </div>
 
-                                                      {/* THE MORPH: Only appears if the target user has already joined another organization */}
-                            {targetLimitStatus?.is_full && (
-                              <div className="animate-in fade-in slide-in-from-top-2 duration-300 p-5 border border-amber-500/20 bg-amber-500/5 space-y-4 rounded-sm">
-                                <div className="flex items-start gap-3">
-                                  <div className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
-                                  <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
-                                      Membership conflict detected
-                                    </p>
-                                    <p className="text-[12px] text-zinc-400 leading-relaxed">
-                                      <span className="text-zinc-200 font-medium">{targetLimitStatus.username}</span> is already an active member of another organization. While they can receive your invite, they must leave their current workspace before they can join yours.
-                                    </p>
-                                  </div>
-                                </div>
+                                              {targetLimitStatus?.is_full && (
+                                                <div className="animate-in fade-in slide-in-from-top-2 duration-300 p-5 border border-amber-500/20 bg-amber-500/5 space-y-4 rounded-sm">
+                                                  <div className="flex items-start gap-3">
+                                                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                                                    <div className="space-y-1">
+                                                      <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
+                                                        Membership conflict detected
+                                                      </p>
+                                                      <p className="text-[12px] text-zinc-400 leading-relaxed">
+                                                        <span className="text-zinc-200 font-medium">{targetLimitStatus.username}</span> is already an active member of another organization. While they can receive your invite, they must leave their current workspace before they can join yours.
+                                                      </p>
+                                                    </div>
+                                                  </div>
 
-                                <div className="flex gap-3">
-                                  <button 
-                                    onClick={() => handleInvite('anyway')}
-                                    className="flex-1 py-2 bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px] font-bold hover:text-white hover:border-zinc-700 transition-all"
-                                  >
-                                    Send invitation anyway
-                                  </button>
-                                  <button 
-                                    onClick={() => setShowCustomMessage(!showCustomMessage)}
-                                    className={`flex-1 py-2 text-[10px] font-bold transition-all border ${
-                                      showCustomMessage 
-                                        ? 'bg-white text-black border-white' 
-                                        : 'bg-zinc-100/5 text-white border-zinc-800 hover:bg-zinc-100/10'
-                                    }`}
-                                  >
-                                    {showCustomMessage ? "Discard note" : "Add personal note"}
-                                  </button>
-                                </div>
+                                                  <div className="flex gap-3">
+                                                    <button 
+                                                      onClick={() => handleInvite('anyway')}
+                                                      className="flex-1 py-2 bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px] font-bold hover:text-white hover:border-zinc-700 transition-all"
+                                                    >
+                                                      Send invitation anyway
+                                                    </button>
+                                                    <button 
+                                                      onClick={() => setShowCustomMessage(!showCustomMessage)}
+                                                      className={`flex-1 py-2 text-[10px] font-bold transition-all border ${
+                                                        showCustomMessage 
+                                                          ? 'bg-white text-black border-white' 
+                                                          : 'bg-zinc-100/5 text-white border-zinc-800 hover:bg-zinc-100/10'
+                                                      }`}
+                                                    >
+                                                      {showCustomMessage ? "Discard note" : "Add personal note"}
+                                                    </button>
+                                                  </div>
 
-                                {/* INLINE EXPANSION: The Priority Message Box */}
-                                {showCustomMessage && (
-                                  <div className="animate-in zoom-in-95 duration-200 pt-2 space-y-3">
-                                    <div className="relative">
-                                      <textarea 
-                                        value={customMessage}
-                                        onChange={(e) => setCustomMessage(e.target.value)}
-                                        placeholder="Explain why they should join your logic arena..."
-                                        className="w-full bg-black border border-zinc-800 p-4 text-[11px] text-zinc-300 outline-none focus:border-zinc-600 min-h-[100px] resize-none leading-relaxed"
-                                      />
-                                      <div className="absolute top-0 right-0 p-2">
-                                        <span className="text-[9px] text-zinc-600 font-mono uppercase">Priority Note</span>
-                                      </div>
-                                    </div>
-                                    
-                                    <p className="text-[10px] text-zinc-500 italic px-1">
-                                      Direct messages increase the likelihood of a creator switching organizations.
-                                    </p>
+                                                  {showCustomMessage && (
+                                                    <div className="animate-in zoom-in-95 duration-200 pt-2 space-y-3">
+                                                      <div className="relative">
+                                                        <textarea 
+                                                          value={customMessage}
+                                                          onChange={(e) => setCustomMessage(e.target.value)}
+                                                          placeholder="Explain why they should join your logic arena..."
+                                                          className="w-full bg-black border border-zinc-800 p-4 text-[11px] text-zinc-300 outline-none focus:border-zinc-600 min-h-[100px] resize-none leading-relaxed"
+                                                        />
+                                                        <div className="absolute top-0 right-0 p-2">
+                                                          <span className="text-[9px] text-zinc-600 font-mono uppercase">Priority Note</span>
+                                                        </div>
+                                                      </div>
+                                                      
+                                                      <p className="text-[10px] text-zinc-500 italic px-1">
+                                                        Direct messages increase the likelihood of a creator switching organizations.
+                                                      </p>
 
-                                    <button 
-                                      onClick={() => handleInvite('with_message')}
-                                      className="w-full py-2.5 bg-white text-black text-[10px] font-bold hover:bg-zinc-200 transition-colors shadow-lg shadow-white/5"
-                                    >
-                                      Send priority invitation
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                                                      <button 
+                                                        onClick={() => handleInvite('with_message')}
+                                                        className="w-full py-2.5 bg-white text-black text-[10px] font-bold hover:bg-zinc-200 transition-colors shadow-lg shadow-white/5"
+                                                      >
+                                                        Send priority invitation
+                                                      </button>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              )}
                         </div>
                       </section>
                     )}
 
-                    {/* 5. CREATOR DIRECTORY (Member Hierarchy) */}
                     <section className="space-y-6">
                       <header className="border-b border-zinc-800 pb-4 flex justify-between items-end">
                         <div>
@@ -1179,18 +1154,15 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                           const loggedInUserId = String(user?.id || ""); 
                           const memberUserId = String(member?.user_id || "");
 
-                          // Boss Logic
                           const isOwnerOfOrg = orgOwnerId !== "" && loggedInUserId !== "" && orgOwnerId === loggedInUserId;
                           const isSelf = loggedInUserId !== "" && memberUserId !== "" && memberUserId === loggedInUserId;
                           const isMemberTheOwner = orgOwnerId !== "" && memberUserId !== "" && memberUserId === orgOwnerId;
 
-                          // 3. SENTENCE CASE STATUS
                           const statusLabel = member.status.charAt(0).toUpperCase() + member.status.slice(1);
 
                           return (
                             <div key={memberUserId} className="p-5 flex items-center justify-between group border-b border-zinc-800/50 last:border-0">
                               <div className="flex items-center gap-4">
-                                {/* User Initials Avatar */}
                                 <div className="w-8 h-8 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] text-zinc-500 font-bold">
                                   {member.username?.substring(0, 2).toUpperCase()}
                                 </div>
@@ -1217,7 +1189,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                                   )}
                                 </div>
                                 <div className="flex items-center gap-4">
-                                  {/* Option A: The Owner removing someone else */}
                                   {isOwnerOfOrg && !isSelf && (
                                     <button 
                                       onClick={() => handleRemoveMember(memberUserId)}
@@ -1227,7 +1198,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                                     </button>
                                   )}
 
-                                  {/* Option B: A Member leaving on their own */}
                                   {isSelf && !isOwnerOfOrg && (
                                     <button 
                                       onClick={() => handleLeaveOrg(currentOrg.id)}
@@ -1247,9 +1217,10 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                 )}
               </div>
             )}
+
         
         {activeTab === 'create' && (
-          <form className="max-w-5xl mx-auto space-y-16 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <form className="max-w-[1440px] mx-auto space-y-16 animate-in fade-in slide-in-from-bottom-2 duration-500">
             <header className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b border-zinc-700 items-end">
               <div className="md:col-span-7 space-y-6">
                 <div className="space-y-1">
@@ -1297,9 +1268,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
              <div className="md:col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 bg-zinc-900/20 p-6 border border-zinc-800/50 items-center">
   
                 {currentOrg ? (
-                  /* -----------------------------------------------------------
-                    Community mode: Gated by default
-                  ----------------------------------------------------------- */
                   <>
                     <div className="space-y-2 animate-in slide-in-from-left-2 duration-300">
                       <label className="text-[11px] font-medium text-zinc-300">Access pin</label>
@@ -1325,9 +1293,6 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                     </div>
                   </>
                 ) : (
-                  /* -----------------------------------------------------------
-                    Personal lab: Open access by default
-                  ----------------------------------------------------------- */
                   <div className="col-span-full flex items-center justify-between">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
@@ -1348,7 +1313,7 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                   </div>
                 )}
               </div>
-                          </header>
+            </header>
 
             <div className="space-y-20">
               {formData.questions.map((q, qIndex) => (
@@ -1583,7 +1548,7 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                   type="button" 
                   disabled={isSaving}
                   onClick={(e) => handleSubmit(e, 'live')} 
-                  className="flex-1 md:flex-none px-10 py-3 bg-zinc-100 text-black text-[11px] font-bold hover:bg-white transition-all disabled:opacity-30"
+                  className="flex-1 md:flex-none px-10 py-3 bg-white text-black text-[11px] font-bold hover:bg-zinc-200 transition-all disabled:opacity-30"
                 >
                   {isSaving ? 'Publishing...' : 'Publish challenge'}
                 </button>
