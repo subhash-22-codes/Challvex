@@ -7,7 +7,7 @@ from auth_utils import get_current_user
 from datetime import datetime, timezone, timedelta
 from bson import ObjectId
 from typing import List, Optional
-from models import OrgCreateRequest, Organization, OrganizationMember
+from models import OrgCreateRequest, Organization, OrganizationMember, InviteRequest
 from pymongo.errors import DuplicateKeyError
 
 from fastapi import BackgroundTasks
@@ -185,11 +185,13 @@ async def get_org_members(
 ):
     logger.info(f"--- [DEBUG] START: Fetching members for Org ID: {org_id} ---")
     user_id = str(current_user["id"])
-    logger.info(f"[DEBUG] Request by User: {current_user['username']} (ID: {user_id})")
-
+    
     try:
-        # 1. SECURITY CHECK: Verify the requester belongs to this organization
-        # We check if the user is an 'active' member of this org
+        # 1. Validation: Ensure org_id is a valid hex string for MongoDB
+        if not ObjectId.is_valid(org_id):
+            raise HTTPException(status_code=400, detail="Invalid organization ID format.")
+
+        # 2. Security Check: Verify the requester is an active member
         membership = await db.org_members.find_one({
             "org_id": org_id,
             "user_id": user_id,
@@ -198,35 +200,27 @@ async def get_org_members(
 
         if not membership:
             logger.warning(f"[DEBUG] UNAUTHORIZED: User {user_id} attempted to access Org {org_id}")
+            # Raising this specifically; we want this to reach the frontend as a 403
             raise HTTPException(
                 status_code=403, 
-                detail="access denied: you are not an active member of this organization."
+                detail="Access denied: You are not an active member of this organization."
             )
 
-        # 2. AGGREGATION: Join 'org_members' with 'users' collection
-        # This matches the schema found in your invite_member function
+        # 3. Aggregation: Join memberships with user profiles
         pipeline = [
-            # Filter for this specific organization
             {"$match": {"org_id": org_id}},
-            
-            # Lookup user details from the 'users' collection
             {
                 "$lookup": {
                     "from": "users",
                     "let": {"member_id": "$user_id"},
                     "pipeline": [
-                        # We convert the users collection _id to string for a clean match
                         {"$addFields": {"id_str": {"$toString": "$_id"}}},
                         {"$match": {"$expr": {"$eq": ["$id_str", "$$member_id"]}}}
                     ],
                     "as": "user_info"
                 }
             },
-            
-            # Deconstruct the resulting user_info array
             {"$unwind": "$user_info"},
-            
-            # Project only the fields Admin1 needs to see
             {
                 "$project": {
                     "_id": 0,
@@ -234,45 +228,43 @@ async def get_org_members(
                     "role": 1,
                     "status": 1,
                     "invited_at": 1,
-                    "invited_by": 1,
                     "username": "$user_info.username",
                     "email": "$user_info.email"
                 }
             }
         ]
 
-        logger.info(f"[DEBUG] Executing aggregation pipeline for Org: {org_id}")
         members = await db.org_members.aggregate(pipeline).to_list(length=100)
-        
-        logger.info(f"[DEBUG] SUCCESS: Found {len(members)} members.")
-        
-        # Log each member for deep verification
-        for idx, m in enumerate(members):
-            logger.info(f"[DEBUG] Member {idx+1}: {m['username']} | Status: {m['status']} | Email: {m['email']}")
-
+        logger.info(f"[DEBUG] SUCCESS: Found {len(members)} members for Org {org_id}")
         return members
 
+    except HTTPException:
+        # Crucial: Re-raise HTTPExceptions so FastAPI handles them (e.g., returns 403)
+        raise
     except Exception as e:
-        logger.error(f"[DEBUG] ERROR in get_org_members: {str(e)}", exc_info=True)
+        # Only log and 500 for actual system crashes
+        logger.error(f"[DEBUG] CRITICAL ERROR in get_org_members: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500, 
-            detail="failed to fetch organization members."
+            detail="Internal server error occurred while fetching members."
         )
-
 
 @router.post("/{org_id}/invite", status_code=status.HTTP_200_OK)
 async def invite_member(
     org_id: str,
-    recipient_email: str,
+    payload: InviteRequest,
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
+    recipient_email = payload.recipient_email
+    invite_type = payload.invite_type
+    personal_note = payload.personal_note
+
     sender_id = str(current_user["id"])
     now = datetime.now(timezone.utc)
 
     # -----------------------------
     # 1. RATE LIMIT (per sender)
-    # max 5 invites per 1 minute
     # -----------------------------
     one_min_ago = now - timedelta(minutes=1)
 
@@ -286,7 +278,6 @@ async def invite_member(
 
     # -----------------------------
     # 2. RATE LIMIT (per email)
-    # max 2 invites per 5 minutes
     # -----------------------------
     five_min_ago = now - timedelta(minutes=5)
 
@@ -345,70 +336,163 @@ async def invite_member(
     new_invite = {
         "org_id": org_id,
         "user_id": recipient_id,
-        "role": "admin",  # your logic unchanged
+        "role": "admin",
         "status": "pending",
         "invited_at": now,
-        "invited_by": sender_id
+        "invited_by": sender_id,
+        # We save these so we can track 'Priority' invites in the DB
+        "invite_type": invite_type,
+        "personal_note": personal_note 
     }
 
     await db.org_members.insert_one(new_invite)
 
     # -----------------------------
-    # 7. SEND EMAIL (background)
+    # 7. SEND EMAIL
     # -----------------------------
     background_tasks.add_task(
         send_org_invite_email,
         target_email=recipient_email,
         username=recipient_user["username"],
         inviter_name=current_user["username"],
-        org_name=org["name"]
+        org_name=org["name"],
+        personal_note=personal_note, # Subhash sees your message here
+        is_priority=(invite_type != "standard") # Tells the email template to look 'Urgent'
     )
 
     return {"message": f"invite sent successfully to {recipient_email}"}
+
+@router.get("/check-limit/{email}")
+async def check_user_org_limit(email: str):
+    print(f"\n--- DEBUG: CHECK LIMIT START ({email}) ---")
+    
+    user = await db.users.find_one({"email": email.lower()})
+    
+    if not user:
+        print(f"[DEBUG] Result: User not found in database.")
+        return {
+            "exists": False,
+            "is_full": False,
+            "current_count": 0
+        }
+
+    user_id = str(user["_id"])
+    print(f"[DEBUG] User found: {user.get('username')} | ID: {user_id}")
+
+    # 1. Identify the organization this user owns
+    owned_org = await db.organizations.find_one({"owner_id": user_id})
+    owned_org_id = str(owned_org["_id"]) if owned_org else None
+    print(f"[DEBUG] Owned organization ID to ignore: {owned_org_id}")
+
+    # 2. Construct the query
+    # We only care about organizations where the user is a member but NOT the owner
+    query = {"user_id": user_id, "status": "active"}
+    if owned_org_id:
+        query["org_id"] = {"$ne": owned_org_id}
+
+    print(f"[DEBUG] Executing membership count with query: {query}")
+    
+    external_joined_count = await db.org_members.count_documents(query)
+    print(f"[DEBUG] Count of external joined organizations: {external_joined_count}")
+
+    is_full = external_joined_count >= 1
+    print(f"[DEBUG] Final decision - Is full: {is_full}")
+    print(f"--- DEBUG: CHECK LIMIT END ---\n")
+
+    return {
+        "exists": True,
+        "username": user.get("username"),
+        "email": user.get("email"),
+        "current_count": external_joined_count,
+        "is_full": is_full 
+    }
 
 @router.post("/invites/respond")
 async def respond_to_invite(org_id: str, action: str, current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["id"])
     
     if action == "accept":
+        # 1. Verification Logic
+        owned_org = await db.organizations.find_one({"owner_id": user_id})
+        owned_org_id = str(owned_org["_id"]) if owned_org else None
+
+        # Check if they are already occupying their 1 allowed "Joined" slot
+        query = {"user_id": user_id, "status": "active"}
+        if owned_org_id:
+            query["org_id"] = {"$ne": owned_org_id}
+
+        external_joined_count = await db.org_members.count_documents(query)
+
+        if external_joined_count >= 1:
+            raise HTTPException(
+                status_code=400, 
+                detail="You are already a member of another organization. Please leave it to join this one."
+            )
+
+        # 2. Process Acceptance
         result = await db.org_members.update_one(
             {"org_id": org_id, "user_id": user_id, "status": "pending"},
             {"$set": {"status": "active", "joined_at": datetime.now(timezone.utc)}}
         )
+        
         if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="no pending invite found")
-        return {"message": "joined organization successfully"}
+            raise HTTPException(status_code=404, detail="No pending invite found.")
+            
+        return {"message": "Successfully joined organization."}
         
     elif action == "decline":
         result = await db.org_members.delete_one(
             {"org_id": org_id, "user_id": user_id, "status": "pending"}
         )
         if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="no pending invite found")
-        return {"message": "invitation declined"}
+            raise HTTPException(status_code=404, detail="No pending invite found.")
+        return {"message": "Invitation declined."}
     
-    raise HTTPException(status_code=400, detail="invalid action")
+    raise HTTPException(status_code=400, detail="Invalid action.")
+
+@router.delete("/{org_id}/leave")
+async def leave_organization(org_id: str, current_user: dict = Depends(get_current_user)):
+    user_id = str(current_user.get("id"))
+
+    try:
+        org = await db.organizations.find_one({"_id": ObjectId(org_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid organization ID")
+
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # Guard: Owners cannot leave their anchor organization
+    if str(org.get("owner_id")) == user_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Owners cannot leave their own organization. You must delete the entity to retire it."
+        )
+
+    result = await db.org_members.delete_one({
+        "org_id": org_id,
+        "user_id": user_id
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Membership record not found.")
+
+    return {"message": "Successfully exited the organization"}
 
 @router.delete("/{org_id}/members/{member_id}")
-async def remove_org_member(
-    org_id: str, 
-    member_id: str, 
-    current_user: dict = Depends(get_current_user)
-):
-    # 1. Verify the organization exists
+async def remove_org_member(org_id: str, member_id: str, current_user: dict = Depends(get_current_user)):
     org = await db.organizations.find_one({"_id": ObjectId(org_id)})
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
-    # 2. Authorization: Only the owner can remove members
+    # Authorization: Only owner can kick members
     if str(org.get("owner_id")) != str(current_user["id"]):
         raise HTTPException(status_code=403, detail="Only the owner can remove members")
 
-    # 3. Prevent the owner from removing themselves
+    # Guard: Cannot kick yourself (use /leave instead)
     if member_id == str(current_user["id"]):
         raise HTTPException(status_code=400, detail="Owners cannot remove themselves from this directory")
 
-    # 4. Remove the membership record
     result = await db.org_members.delete_one({
         "org_id": org_id,
         "user_id": member_id

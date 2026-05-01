@@ -85,7 +85,7 @@ async def create_challenge(
     # UPDATED: Default to Global settings if no org_id is provided
     else:
         challenge_dict["org_id"] = None
-        challenge_dict["org_name"] = "Global"
+        challenge_dict["org_name"] = None
         challenge_dict["is_published_globally"] = True
 
     challenge_dict["created_by"] = current_user["username"]
@@ -130,7 +130,7 @@ async def update_challenge(
             challenge_dict["is_published_globally"] = False
     else:
         challenge_dict["org_id"] = None
-        challenge_dict["org_name"] = "Global"
+        challenge_dict["org_name"] = None
         challenge_dict["is_published_globally"] = True
 
     challenge_dict["created_by"] = existing["created_by"]
@@ -218,7 +218,7 @@ async def get_all_challenges(
     # 2. Solver/Student Path (Open Discovery Hallway)
     else:
         print("[DEBUG] Logic Path: Open Solver")
-        query["status"] = "live" # Only show published work
+        query["status"] = {"$in": ["live", "draft"]}
         if org_id:
             query["org_id"] = org_id
             print(f"[DEBUG] Filtering to Org: {org_id}")

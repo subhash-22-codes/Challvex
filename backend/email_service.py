@@ -3,6 +3,9 @@ import httpx
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from dotenv import load_dotenv
+from typing import List, Optional, Dict
+load_dotenv()  
 # Setup basic logging to see errors in Docker logs
 logger = logging.getLogger(__name__)
 
@@ -217,49 +220,126 @@ async def send_verification_otp_email(target_email: str, username: str, otp: str
             logger.error(f"OTP Email Error: {str(e)}")
             return False
         
-async def send_org_invite_email(target_email: str, username: str, inviter_name: str, org_name: str):
+async def send_org_invite_email(
+    target_email: str, 
+    username: str, 
+    inviter_name: str, 
+    org_name: str,
+    personal_note: Optional[str] = None, 
+    is_priority: bool = False 
+):
     url = "https://api.brevo.com/v3/smtp/email"
-    
-    # Updated: Points to the admin dashboard where the tabs actually exist
     invite_link = f"{FRONTEND_URL}/admin?tab=organization"
     logo_url = "https://res.cloudinary.com/dggciuh9l/image/upload/v1776788278/profile_pics/rtvycbiuzzog1b0qqj3n.png"
-    timestamp = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d %b, %H:%M")
     
+    # Unique timestamp to keep threads clean
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    timestamp = now.strftime("%d %b, %Y — %I:%M %p")
+    
+    # Human-friendly Subject
+    if is_priority:
+        subject = f"Message from {inviter_name} regarding {org_name} ({timestamp})"
+    else:
+        subject = f"You are invited to join {org_name} ({timestamp})"
+
     headers = {
         "accept": "application/json",
         "api-key": BREVO_API_KEY,
         "content-type": "application/json"
     }
+
+    # Personal Note: Styled as a clean, human quote
+    note_html = f"""
+    <div style="margin-bottom: 32px; padding: 20px; border: 1px dashed #27272a; border-radius: 4px;">
+        <p style="margin: 0; color: #f4f4f5; font-size: 14px; font-style: italic; line-height: 1.6;">
+            "{personal_note}"
+        </p>
+        <p style="margin: 12px 0 0 0; font-size: 11px; color: #71717a; font-weight: 600;">
+            — {inviter_name}
+        </p>
+    </div>
+    """ if personal_note else ""
     
     payload = {
         "sender": {"email": SENDER_EMAIL, "name": "Challvex"},
         "to": [{"email": target_email, "name": username}],
-        "subject": f"Invitation to join {org_name} — {timestamp}",
+        "subject": subject,
         "htmlContent": f"""
         <!DOCTYPE html>
         <html>
-        <body style="background-color: #09090b; margin: 0; padding: 0; font-family: sans-serif;">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #09090b; padding: 40px 20px;">
+        <body style="background-color: #09090b; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #09090b; padding: 60px 20px;">
                 <tr>
                     <td align="center">
-                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 480px; background-color: #0c0c0e; border: 1px solid #27272a; padding: 40px;">
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 480px; background-color: #09090b;">
+                            
+                            <!-- Header -->
                             <tr>
-                                <td align="center" style="padding-bottom: 32px;">
+                                <td style="padding-bottom: 48px;" align="center">
                                     <img src="{logo_url}" alt="Challvex" height="22" />
                                 </td>
                             </tr>
+                            
+                            <!-- Body -->
                             <tr>
-                                <td>
-                                    <h1 style="color: #f4f4f5; font-size: 17px; font-weight: 500; margin-bottom: 16px;">Hello {username},</h1>
-                                    <p style="color: #a1a1aa; font-size: 13px; line-height: 1.6; margin-bottom: 24px;">
-                                        <strong style="color: #f4f4f5;">{inviter_name}</strong> has invited you to join the <strong style="color: #f4f4f5;">{org_name}</strong> organization on Challvex as a Creator.
-                                    </p>
-                                    <a href="{invite_link}" style="background-color: #f4f4f5; color: #09090b; display: inline-block; font-size: 11px; font-weight: 700; line-height: 44px; text-align: center; text-decoration: none; width: 100%; text-transform: uppercase; letter-spacing: 0.05em;">View Invitation</a>
-                                    <p style="color: #52525b; font-size: 11px; margin-top: 28px;">
-                                        If you weren't expecting this invitation, you can safely ignore this email.
+                                <td style="padding-bottom: 32px;">
+                                    <h1 style="color: #ffffff; font-size: 24px; font-weight: 500; letter-spacing: -0.03em; margin: 0 0 16px 0;">
+                                        You're invited.
+                                    </h1>
+                                    <p style="color: #a1a1aa; font-size: 15px; line-height: 1.6; margin: 0;">
+                                        {inviter_name} wants you to join <span style="color: #ffffff;">{org_name}</span>. 
+                                        This is a collaborative space where you can build and publish coding challenges together.
                                     </p>
                                 </td>
                             </tr>
+
+                            {note_html}
+
+                            <!-- Action -->
+                            <tr>
+                                <td style="padding-bottom: 48px;">
+                                    <a href="{invite_link}" style="background-color: #ffffff; color: #000000; display: inline-block; font-size: 14px; font-weight: 700; padding: 14px 32px; text-decoration: none; border-radius: 2px;">
+                                        Review invitation
+                                    </a>
+                                </td>
+                            </tr>
+
+                            <!-- Pro Tip / Rule Explanation -->
+                            <tr>
+                                <td style="padding: 24px; background-color: #0c0c0e; border: 1px solid #18181b;">
+                                    <p style="margin: 0 0 8px 0; font-size: 11px; font-weight: 700; color: #f4f4f5; text-transform: uppercase; letter-spacing: 0.05em;">
+                                        A quick note on spots
+                                    </p>
+                                    <p style="margin: 0; color: #71717a; font-size: 12px; line-height: 1.6;">
+                                        To keep things focused, you can be a member of one organization at a time. If you’re already helping another team, you’ll need to leave that one before joining {org_name}.
+                                    </p>
+                                </td>
+                            </tr>
+
+                            <!-- Standard Footer -->
+                            <tr>
+                                <td align="center" style="padding-top: 60px;">
+                                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                        <tr>
+                                            <td align="center" style="padding-bottom: 16px;">
+                                                <img src="{logo_url}" alt="Challvex" height="12" style="display: block; opacity: 0.2; filter: grayscale(100%);" />
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td align="center" style="color: #3f3f46; font-size: 10px; line-height: 1.8; letter-spacing: 0.02em;">
+                                                This invitation was sent to <span style="color: #71717a;">{target_email}</span>.
+                                                <br />
+                                                Sent via Challvex Identity Service • {timestamp}
+                                                <br /><br />
+                                                Hyderabad, Telangana, India
+                                                <br />
+                                                <span style="color: #27272a;">© 2026 Challvex. All rights reserved.</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
                         </table>
                     </td>
                 </tr>

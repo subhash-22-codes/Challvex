@@ -132,3 +132,8 @@ class PaginatedChallenges(BaseModel):
     
 class OrgCreateRequest(BaseModel):
     name: str
+
+class InviteRequest(BaseModel):
+    recipient_email: str
+    invite_type: str = "standard"  # Default if not provided
+    personal_note: Optional[str] = None
