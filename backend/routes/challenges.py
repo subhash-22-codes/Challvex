@@ -20,20 +20,16 @@ VALID_STATUSES = {"draft", "live", "closed", "archived"}
 # -----------------------------------
 # HELPERS
 # -----------------------------------
-async def ensure_org_admin(current_user: dict, org_id: Optional[str] = None):
-    """
-    Verifies if the user is a global admin or an admin of a specific organization.
-    """
-    # 1. Check global admin role first
-    if "admin" in current_user.get("roles", []):
+async def ensure_org_creator(current_user: dict, org_id: Optional[str] = None):
+
+    if "creator" in current_user.get("roles", []):
         return True
     
-    # 2. If it is an organization challenge, check membership in that org
     if org_id:
         membership = await db.org_members.find_one({
             "org_id": org_id,
-            "user_id": str(current_user["id"]), # FIXED: Use "id"
-            "role": {"$in": ["owner", "admin"]},
+            "user_id": str(current_user["id"]),
+            "role": {"$in": ["owner", "creator"]},
             "status": "active"
         })
         if membership:
@@ -41,18 +37,15 @@ async def ensure_org_admin(current_user: dict, org_id: Optional[str] = None):
 
     raise HTTPException(
         status_code=403,
-        detail="Access denied: You do not have administrative permissions for this area."
+        detail="Access denied: You do not have creator permissions for this area."
     )
+    
+def strip_sensitive_data(challenge: dict, is_creator: bool):
 
-def strip_sensitive_data(challenge: dict, is_privileged: bool):
-    """
-    Removes private test cases and access codes so students cannot see them.
-    """
     for question in challenge.get("questions", []):
         question["private_samples"] = []
     
-    # Never send the access code to the browser unless the user is an admin
-    if not is_privileged:
+    if not is_creator:
         challenge["access_code"] = None
 
 
@@ -61,7 +54,7 @@ async def create_challenge(
     challenge: DailyChallenge,
     current_user: dict = Depends(get_current_user)
 ):
-    await ensure_org_admin(current_user, challenge.org_id)
+    await ensure_org_creator(current_user, challenge.org_id)
 
     challenge_dict = challenge.model_dump()
 
@@ -116,7 +109,7 @@ async def update_challenge(
     if not existing:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    await ensure_org_admin(current_user, existing.get("org_id"))
+    await ensure_org_creator(current_user, existing.get("org_id"))
 
     challenge_dict = challenge.model_dump()
 
@@ -157,7 +150,7 @@ async def update_challenge_status(
     if not existing:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    await ensure_org_admin(current_user, existing.get("org_id"))
+    await ensure_org_creator(current_user, existing.get("org_id"))
 
     new_status = data.get("status", "").strip().lower()
     if new_status not in VALID_STATUSES:
@@ -184,29 +177,23 @@ async def get_all_challenges(
 ):
     user_id_str = str(current_user["id"])
     skip = (page - 1) * limit
-    
-    print(f"\n[DEBUG] --- Request by: {current_user['username']} ---")
-    print(f"[DEBUG] Params -> page: {page}, limit: {limit}, org_id: {org_id}")
 
-    is_global_admin = "admin" in current_user.get("roles", [])
-    
-    # Verify Admin/Privileged status for the specific org
-    is_org_admin = False
+    is_global_creator = "creator" in current_user.get("roles", [])
+
+    is_org_creator = False
     if org_id:
         membership = await db.org_members.find_one({
             "org_id": org_id,
             "user_id": user_id_str,
-            "role": {"$in": ["owner", "admin"]},
+            "role": {"$in": ["owner", "creator"]},
             "status": "active"
         })
-        is_org_admin = True if membership else False
+        is_org_creator = True if membership else False
 
-    is_privileged = is_global_admin or is_org_admin
+    is_privileged = is_global_creator or is_org_creator
     query = {}
 
-    # 1. Admin/Creator Path (Management View)
     if personal or (org_id and is_privileged):
-        print("[DEBUG] Logic Path: Admin/Management")
         if org_id:
             query["org_id"] = org_id
         elif personal:
@@ -214,28 +201,16 @@ async def get_all_challenges(
                 {"created_by_id": user_id_str},
                 {"created_by": current_user["username"]}
             ]
-            
-    # 2. Solver/Student Path (Open Discovery Hallway)
     else:
-        print("[DEBUG] Logic Path: Open Solver")
         query["status"] = {"$in": ["live", "draft"]}
         if org_id:
             query["org_id"] = org_id
-            print(f"[DEBUG] Filtering to Org: {org_id}")
-        else:
-            print("[DEBUG] Solver in Global Hallway - Open Discovery")
 
-    # --- PAGINATION LOGIC ---
-    # Total count for the frontend to know how many pages exist
     total_count = await db.challenges.count_documents(query)
-    
-    # Fetch only the slice for the current page
+
     cursor = db.challenges.find(query).sort("created_at", -1).skip(skip).limit(limit)
     challenges = await cursor.to_list(length=limit)
-    
-    print(f"[DEBUG] Found {total_count} total. Returning {len(challenges)} for Page {page}")
 
-    # --- HYDRATE ORG NAMES ---
     unique_org_ids = list({c["org_id"] for c in challenges if c.get("org_id")})
     valid_object_ids = []
     for oid in unique_org_ids:
@@ -248,14 +223,12 @@ async def get_all_challenges(
     orgs_data = await orgs_cursor.to_list(length=len(valid_object_ids))
     org_map = {str(o["_id"]): o["name"] for o in orgs_data}
 
-    # Final Processing
     for c in challenges:
         if c.get("org_id"):
             c["org_name"] = org_map.get(c["org_id"], "Unknown Community")
 
-        # Check privilege for item-level security
         item_is_mine = (c.get("created_by_id") == user_id_str)
-        can_manage = is_global_admin or item_is_mine
+        can_manage = is_global_creator or item_is_mine
         strip_sensitive_data(c, can_manage)
 
     return {
@@ -276,30 +249,26 @@ async def get_challenge_by_slot(
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    is_global_admin = "admin" in current_user.get("roles", [])
+    is_global_creator = "creator" in current_user.get("roles", [])
     
-    # Check if they are an admin of the org this challenge belongs to
-    is_org_admin = False
+    is_org_creator = False
     org_id = challenge.get("org_id")
     if org_id:
         membership = await db.org_members.find_one({
             "org_id": org_id,
-            "user_id": str(current_user["id"]), # FIXED: Use "id"
-            "role": {"$in": ["owner", "admin"]}
+            "user_id": str(current_user["id"]),
+            "role": {"$in": ["owner", "creator"]}
         })
-        is_org_admin = True if membership else False
+        is_org_creator = True if membership else False
 
-    is_privileged = is_global_admin or is_org_admin
+    is_privileged = is_global_creator or is_org_creator
 
-    # Solvers cannot see challenges that are not live
     if not is_privileged and challenge.get("status") != "live":
         raise HTTPException(status_code=404, detail="Challenge is not available")
 
-    # Hide codes and private tests
     strip_sensitive_data(challenge, is_privileged)
 
     return challenge
-
 
 # -----------------------------------
 # DELETE CHALLENGE
@@ -313,7 +282,7 @@ async def delete_challenge(
     if not existing:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    await ensure_org_admin(current_user, existing.get("org_id"))
+    await ensure_org_creator(current_user, existing.get("org_id"))
 
     # Block deletion if someone has already submitted code
     submission_exists = await db.submissions.find_one({"slot_id": slot_id})

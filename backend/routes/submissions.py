@@ -19,11 +19,8 @@ EDITABLE_STATUSES = {"started", "draft", "pending"}
 FINAL_STATUS = "reviewed"
 
 
-# -----------------------------------
-# HELPERS
-# -----------------------------------
-def ensure_admin(current_user: dict):
-    if "admin" not in current_user.get("roles", []):
+def ensure_creator(current_user: dict):
+    if "creator" not in current_user.get("roles", []):
         raise HTTPException(status_code=403, detail="Unauthorized Access")
 
 def clean_score(value):
@@ -212,7 +209,7 @@ async def update_review(
     data: dict,
     current_user: dict = Depends(get_current_user)
 ):
-    ensure_admin(current_user)
+    ensure_creator(current_user)
 
     scores_dict = data.get(
         "individual_scores",
@@ -276,11 +273,10 @@ async def get_submissions(
     admin_view: bool = False,
     current_user: dict = Depends(get_current_user)
 ):
-    is_admin = "admin" in current_user["roles"]
+    is_creator = "creator" in current_user["roles"]
     user_id_str = str(current_user["id"])
 
-    if is_admin and admin_view:
-        # UPDATE: Fetch only slot_ids created by the current admin to prevent viewing other admins' data
+    if is_creator and admin_view:
         owned_challenges_cursor = db.challenges.find({
             "$or": [
                 {"created_by_id": user_id_str},
@@ -291,7 +287,6 @@ async def get_submissions(
         owned_challenges = await owned_challenges_cursor.to_list(length=1000)
         allowed_slot_ids = [c["slot_id"] for c in owned_challenges]
 
-        # UPDATE: Restrict the submission query to the allowed slot_ids identified above
         cursor = db.submissions.find({
             "slot_id": {"$in": allowed_slot_ids}
         }).sort("submitted_at", -1)
@@ -306,7 +301,7 @@ async def get_submissions(
     for item in raw_items:
         item["_id"] = str(item["_id"])
 
-        if is_admin and admin_view:
+        if is_creator and admin_view:
             try:
                 student = await db.users.find_one({
                     "_id": ObjectId(item["student_id"])
@@ -331,10 +326,10 @@ async def get_specific_submission(
     student_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    ensure_admin(current_user)
+    ensure_creator(current_user)
     user_id_str = str(current_user["id"])
 
-    # UPDATE: Verify the current admin owns the challenge associated with this slot_id before proceeding
+    # UPDATE: Verify the current creator owns the challenge associated with this slot_id before proceeding
     challenge = await db.challenges.find_one({"slot_id": slot_id})
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge context not found.")
@@ -387,7 +382,7 @@ async def get_submission(
 ):
     submission = await db.submissions.find_one({
         "slot_id": slot_id,
-        "student_id": current_user["id"]
+        "student_id": str(current_user["id"])
     })
 
     if submission:
@@ -407,7 +402,7 @@ async def discard_submission(
 ):
     result = await db.submissions.delete_one({
         "slot_id": slot_id,
-        "student_id": current_user["id"],
+        "student_id": str(current_user["id"]),
         "status": {
             "$in": list(EDITABLE_STATUSES)
         }

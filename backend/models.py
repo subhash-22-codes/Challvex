@@ -1,12 +1,12 @@
 from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Literal
 from datetime import datetime, timezone
 
 class User(BaseModel):
     username: str
     email: EmailStr
     password: str  
-    roles: List[str] = ["student"] 
+    roles: List[Literal["creator", "student"]] = Field(default_factory=lambda: ["student"])
     mentor_id: Optional[str] = None 
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -109,7 +109,7 @@ class OrganizationMember(BaseModel):
     org_id: str
     user_id: str
     invited_by: str  # Added to track who sent the invite
-    role: str = "admin" 
+    role: Literal["creator"] = "creator"
     invited_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     joined_at: Optional[datetime] = None
     status: str = "pending" 

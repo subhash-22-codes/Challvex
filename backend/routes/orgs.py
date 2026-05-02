@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/orgs", tags=["Organizations"])
 
 
-async def ensure_org_admin(current_user: dict, org_id: str):
-    if "admin" in current_user.get("roles", []):
+async def ensure_org_creator(current_user: dict, org_id: str):
+    if "creator" in current_user.get("roles", []):
         return True
     
     membership = await db.org_members.find_one({
         "org_id": org_id,
         "user_id": str(current_user["id"]),
-        "role": {"$in": ["owner", "admin"]},
+        "role": {"$in": ["owner", "creator"]},
         "status": "active"
     })
     
@@ -33,7 +33,7 @@ async def ensure_org_admin(current_user: dict, org_id: str):
 
     raise HTTPException(
         status_code=403,
-        detail="Access denied: You do not have administrative permissions for this area."
+        detail="Access denied: You do not have creator permissions for this area."
     )
 
 @router.post("/create", status_code=201)
@@ -136,7 +136,7 @@ async def get_my_organizations(current_user: dict = Depends(get_current_user)):
         user_membership = next(m for m in memberships if m["org_id"] == org_id_str)
         user_role = user_membership.get("role")
         
-        is_privileged = user_role in ["owner", "admin"]
+        is_privileged = user_role in ["owner", "creator"]
         has_content = org.get("assessment_count", 0) > 0
         
         if is_privileged or has_content:
@@ -300,7 +300,7 @@ async def invite_member(
     if not org:
         raise HTTPException(404, "organization not found")
 
-    await ensure_org_admin(current_user, org_id)
+    await ensure_org_creator(current_user, org_id)
 
     # -----------------------------
     # 4. USER CHECK
@@ -336,7 +336,7 @@ async def invite_member(
     new_invite = {
         "org_id": org_id,
         "user_id": recipient_id,
-        "role": "admin",
+        "role": "creator",
         "status": "pending",
         "invited_at": now,
         "invited_by": sender_id,
@@ -364,7 +364,7 @@ async def invite_member(
 
 @router.get("/check-limit/{email}")
 async def check_user_org_limit(email: str):
-    print(f"\n--- DEBUG: CHECK LIMIT START ({email}) ---")
+    logger.info(f"[DEBUG] CHECK LIMIT START ({email})")
     
     user = await db.users.find_one({"email": email.lower()})
     
@@ -377,27 +377,18 @@ async def check_user_org_limit(email: str):
         }
 
     user_id = str(user["_id"])
-    print(f"[DEBUG] User found: {user.get('username')} | ID: {user_id}")
 
-    # 1. Identify the organization this user owns
     owned_org = await db.organizations.find_one({"owner_id": user_id})
     owned_org_id = str(owned_org["_id"]) if owned_org else None
-    print(f"[DEBUG] Owned organization ID to ignore: {owned_org_id}")
 
-    # 2. Construct the query
-    # We only care about organizations where the user is a member but NOT the owner
     query = {"user_id": user_id, "status": "active"}
     if owned_org_id:
         query["org_id"] = {"$ne": owned_org_id}
-
-    print(f"[DEBUG] Executing membership count with query: {query}")
     
     external_joined_count = await db.org_members.count_documents(query)
-    print(f"[DEBUG] Count of external joined organizations: {external_joined_count}")
 
     is_full = external_joined_count >= 1
-    print(f"[DEBUG] Final decision - Is full: {is_full}")
-    print(f"--- DEBUG: CHECK LIMIT END ---\n")
+    logger.info(f"[DEBUG] CHECK LIMIT RESULT for {email} | Exists: True | Current Count: {external_joined_count} | Is Full: {is_full}")
 
     return {
         "exists": True,

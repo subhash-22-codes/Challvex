@@ -18,4 +18,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # 5. Render uses a dynamic $PORT, so we must use the variable
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+#CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]

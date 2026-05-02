@@ -229,7 +229,7 @@ async def send_org_invite_email(
     is_priority: bool = False 
 ):
     url = "https://api.brevo.com/v3/smtp/email"
-    invite_link = f"{FRONTEND_URL}/admin?tab=organization"
+    invite_link = f"{FRONTEND_URL}/creator?tab=organization"
     logo_url = "https://res.cloudinary.com/dggciuh9l/image/upload/v1776788278/profile_pics/rtvycbiuzzog1b0qqj3n.png"
     
     # Unique timestamp to keep threads clean

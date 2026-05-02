@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends
@@ -8,15 +8,15 @@ from fastapi.security import OAuth2PasswordBearer
 # -----------------------------------
 # ENV CONFIG
 # -----------------------------------
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "CHANGE_THIS_IN_PRODUCTION"
-)
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY not configured")
 
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 
 ACCESS_TOKEN_EXPIRE_MINUTES = int(
-    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440")
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 )
 
 # -----------------------------------
@@ -41,10 +41,7 @@ def hash_password(password: str):
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str):
-    return pwd_context.verify(
-        plain_password,
-        hashed_password
-    )
+    return pwd_context.verify(plain_password, hashed_password)
 
 # -----------------------------------
 # CREATE JWT TOKEN
@@ -52,11 +49,14 @@ def verify_password(plain_password: str, hashed_password: str):
 def create_access_token(data: dict):
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    now = datetime.now(timezone.utc)
+    expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
-    to_encode.update({"exp": expire})
+    to_encode.update({
+        "exp": expire,
+        "iat": now,
+        "nbf": now
+    })
 
     return jwt.encode(
         to_encode,
@@ -87,13 +87,7 @@ async def get_current_user(
         username = payload.get("username")
         roles = payload.get("roles")
 
-        if not user_id:
-            raise credentials_exception
-
-        if not username:
-            raise credentials_exception
-
-        if not isinstance(roles, list):
+        if not user_id or not username or not isinstance(roles, list):
             raise credentials_exception
 
         return {
