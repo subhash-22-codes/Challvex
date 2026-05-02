@@ -15,73 +15,81 @@ export default function LandingNavbar() {
 
   return (
     <motion.nav 
-      initial={{ y: -20, opacity: 0 }}
+      initial={{ y: -10, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="fixed top-0 left-0 right-0 z-[1000] bg-[#09090b]/90 backdrop-blur-md border-b border-zinc-800 h-14"
+      className="fixed top-0 left-0 right-0 z-[1000] bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5 h-12 antialiased"
     >
-      <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-8 h-full flex justify-between items-center gap-4">
         
-        {/* Logo Section */}
-        <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center gap-2">
+        <div className="flex items-center h-full">
+          {/* Logo Section - Adaptive switch for mobile context */}
+          <Link to="/" className="transition-all hover:opacity-70 shrink-0 flex items-center">
+            <img 
+              src="/minichallvex.png" 
+              alt="Challvex" 
+              className="h-4 w-auto brightness-125 md:hidden" 
+            />
             <img 
               src="/challvex.png" 
               alt="Challvex" 
-              className="h-5 w-auto object-contain"
+              className="h-3 w-auto brightness-125 hidden md:block" 
             />
           </Link>
           
-          {/* Simple Links with Icons */}
-          <div className="hidden md:flex items-center gap-6 border-l border-zinc-800 pl-8">
-            <Link to="/about" className="flex items-center gap-2 text-[12px] text-zinc-400 hover:text-white transition-colors">
-              <BookOpen size={14} />
-              <span>Guide</span>
+          {/* Internal Links - High density spacing */}
+          <div className="flex items-center gap-4 sm:gap-6 ml-4 sm:ml-8 border-l border-white/10 pl-4 sm:pl-8 h-4">
+            <Link to="/about" className="flex items-center gap-2 text-[11px] font-medium text-zinc-500 hover:text-white transition-colors">
+              <BookOpen size={13} className="shrink-0" />
+              <span className="hidden xs:inline">Guide</span>
             </Link>
-            <Link to="/challenges" className="flex items-center gap-2 text-[12px] text-zinc-400 hover:text-white transition-colors">
-              <LayoutDashboard size={14} />
-              <span>Challenges</span>
+            <Link to="/challenges" className="flex items-center gap-2 text-[11px] font-medium text-zinc-500 hover:text-white transition-colors">
+              <LayoutDashboard size={13} className="shrink-0" />
+              <span className="hidden xs:inline">Challenges</span>
             </Link>
-            <div className="flex items-center gap-2 text-[12px] text-zinc-600 cursor-not-allowed select-none">
-              <Trophy size={14} />
-              <span>Ranks (Soon)</span>
+            <div className="flex items-center gap-2 text-[11px] font-medium text-zinc-700 cursor-not-allowed select-none">
+              <Trophy size={13} className="shrink-0" />
+              <span className="hidden sm:inline">Ranks (Soon)</span>
             </div>
           </div>
         </div>
 
-        {/* User Buttons */}
-        <div className="flex items-center gap-5">
+        {/* User Context Actions */}
+        <div className="flex items-center gap-3 sm:gap-6 h-full">
           {user ? (
             <>
               <Link 
                 to={user.roles?.includes('admin') ? '/admin' : '/dashboard'} 
-                className="text-[12px] text-zinc-300 hover:text-white flex items-center gap-2"
+                className="text-[11px] font-medium text-zinc-400 hover:text-white flex items-center gap-2 transition-colors whitespace-nowrap"
               >
-                <LayoutDashboard size={14} />
-                <span>My dashboard</span>
+                <LayoutDashboard size={13} />
+                <span className="hidden sm:inline">My dashboard</span>
               </Link>
               <button 
                 onClick={logout}
-                className="text-[12px] text-zinc-500 hover:text-red-400 flex items-center gap-2 transition-colors"
+                className="text-[11px] font-medium text-zinc-500 hover:text-red-400 flex items-center gap-2 transition-all active:scale-95 whitespace-nowrap"
               >
-                <LogOut size={14} />
-                <span>Logout</span>
+                <LogOut size={13} />
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="flex items-center gap-2 text-[12px] text-zinc-400 hover:text-white transition-colors">
-                <LogIn size={14} />
-                <span>Login</span>
+              <Link 
+                to="/login" 
+                className="text-[11px] font-medium text-zinc-500 hover:text-white transition-colors whitespace-nowrap"
+              >
+                <span className="flex items-center gap-2">
+                  <LogIn size={13} />
+                  Login
+                </span>
               </Link>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Link 
-                  to="/signup" 
-                  className="bg-white text-black px-4 py-1.5 text-[12px] font-bold border border-white hover:bg-zinc-200 transition-all rounded-none flex items-center gap-2"
-                >
-                  <UserPlus size={14} />
-                  <span>Join now</span>
-                </Link>
-              </motion.div>
+              <Link 
+                to="/signup" 
+                className="bg-white text-black px-3 sm:px-4 h-7 text-[11px] font-bold border border-white hover:bg-zinc-200 transition-all active:scale-[0.97] flex items-center gap-2 rounded-none whitespace-nowrap"
+              >
+                <UserPlus size={13} />
+                <span>Join now</span>
+              </Link>
             </>
           )}
         </div>

@@ -480,12 +480,6 @@ export default function FeatureGrid() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-zinc-900">
-          
-          <p className="text-[10px] font-mono text-zinc-700 italic">
-            * Data integrity is maintained across all creator and solver dashboards.
-          </p>
-        </div>
       </div>
     </section>
   );

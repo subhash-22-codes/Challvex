@@ -106,7 +106,7 @@ export default function AccessCodeModal({ isOpen, onClose, slotId, onSuccess }) 
             <button
               type="submit"
               disabled={loading || code.join("").length !== 6 || cooldown > 0}
-              className="w-full py-3 bg-zinc-100 text-black text-[11px] font-bold uppercase tracking-widest hover:bg-white transition-all disabled:opacity-20"
+              className="w-full py-3 bg-zinc-100 text-black text-[11px] font-bold tracking-widest hover:bg-white transition-all disabled:opacity-20"
             >
               {loading ? "Verifying..." : "Enter Arena"}
             </button>

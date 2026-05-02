@@ -310,7 +310,7 @@ export default function StudentDashboard() {
 
                       <div className="flex items-center gap-2 text-[10px] text-zinc-600 flex-wrap">
                         <span className="flex items-center gap-1">
-                          By {item.org_name || item.created_by || "Challvex admin"}
+                          By {item.org_name || item.created_by || "Challvex Admin"}
                           {item.org_id && (
                             <svg className="w-2.5 h-2.5 text-amber-500/80" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />

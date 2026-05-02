@@ -75,7 +75,7 @@ function AppContent() {
           path="/" 
           element={
             user ? (
-              user.roles?.includes("admin") 
+              user.roles?.includes("creator") 
                 ? <Navigate to="/dashboard" replace /> 
                 : <Navigate to="/dashboard" replace />
             ) : (
@@ -110,17 +110,17 @@ function AppContent() {
         
         {/* Admin Protected Routes */}
         <Route 
-          path="/admin" 
+          path="/creator" 
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["creator"]}>
               <AdminDashboard />
             </ProtectedRoute>
           } 
         />
         <Route 
-          path="/admin/review/:slotId/:studentId" 
+          path="/creator/review/:slotId/:studentId" 
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["creator"]}>
               <AdminReview />
             </ProtectedRoute>
           } 

@@ -94,7 +94,7 @@ const [customMessage, setCustomMessage] = useState("");
   
   if (targetOrg) {
     switchOrg(targetOrg); // update the active organization context
-    navigate("/admin/dashboard"); // send the user to their workspace home
+    navigate("/creator"); // send the user to their workspace home
   }
 };
 
@@ -657,7 +657,7 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
         <div className="max-w-[1440px] mx-auto px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-10">
             <span className="text-zinc-100 font-medium text-[13px] tracking-tight">
-              {currentOrg ? currentOrg.name : "Global admin"}
+              {currentOrg ? currentOrg.name : "Global creator"}
             </span>
             <div className="flex gap-8">
               {[
@@ -1067,7 +1067,7 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                                 disabled={isCheckingLimit || !inviteEmail}
                                 className="px-6 py-2 border border-zinc-600 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
                               >
-                                Invite admin
+                                Invite creator
                               </button>
                             )}
                           </div>
@@ -1579,7 +1579,7 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
                     <div className="col-span-3 text-zinc-500">{new Date(sub.submitted_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</div>
                     <div className="col-span-2 text-center text-[10px] text-zinc-400 italic capitalize">{sub.status}</div>
                     <div className="col-span-2 text-right">
-                      <Link to={`/admin/review/${sub.slot_id}/${sub.student_id}`} className={`text-[11px] font-medium px-3 py-1 border transition-all ${sub.status === 'reviewed' ? 'text-zinc-500 border-zinc-800' : 'text-emerald-400 border-emerald-900/30 bg-emerald-500/5 hover:bg-emerald-500/10'}`}>
+                      <Link to={`/creator/review/${sub.slot_id}/${sub.student_id}`} className={`text-[11px] font-medium px-3 py-1 border transition-all ${sub.status === 'reviewed' ? 'text-zinc-500 border-zinc-800' : 'text-emerald-400 border-emerald-900/30 bg-emerald-500/5 hover:bg-emerald-500/10'}`}>
                         {sub.status === 'reviewed' ? 'Edit grade' : 'Review now'}
                       </Link>
                     </div>
@@ -1633,21 +1633,16 @@ const isActualOwner = String(user?.id || "") === String(currentOrg?.owner_id || 
   );
 }
 
-const StarIcon = ({ active }) => (
-    <svg 
-      className={`w-2.5 h-2.5 ${active ? "text-amber-500" : "text-zinc-700"}`} 
-      viewBox="0 0 24 24" 
-      fill="currentColor"
-    >
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-    </svg>
-  );
+const StarIcon = ({ active = false }) => (
+  <svg 
+    className={`w-2.5 h-2.5 ${active ? "text-amber-500" : "text-zinc-700"}`} 
+    viewBox="0 0 24 24" 
+    fill="currentColor"
+  >
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+  </svg>
+);
 
-  StarIcon.propTypes = {
-  active: PropTypes.bool // Explicitly declare that 'active' must be a boolean
-};
-
-// Set a default value for safety
-StarIcon.defaultProps = {
-  active: false
+StarIcon.propTypes = {
+  active: PropTypes.bool
 };

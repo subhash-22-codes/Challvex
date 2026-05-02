@@ -134,7 +134,7 @@ export default function AdminReview() {
 
           {/* Action - Sharp edges and Sentence case */}
           <button 
-            onClick={() => modal.type === 'success' ? navigate('/admin') : setModal({ ...modal, isOpen: false })} 
+            onClick={() => modal.type === 'success' ? navigate('/creator') : setModal({ ...modal, isOpen: false })} 
             className="w-full py-2.5 bg-zinc-100 text-zinc-950 text-[11px] font-medium rounded-none hover:bg-white transition-colors"
           >
             {modal.type === 'success' ? 'Return to dashboard' : 'Close'}
@@ -150,7 +150,7 @@ export default function AdminReview() {
         {/* Left */}
         <div className="flex items-center gap-5 min-w-0">
           <button
-            onClick={() => navigate("/admin")}
+            onClick={() => navigate("/creator")}
             className="text-[11px] text-zinc-500 hover:text-zinc-100 transition-colors"
           >
             Back

@@ -232,14 +232,14 @@ export default function SignupPage() {
                       <button
                         type="button" 
                         disabled={isSubmitting}
-                        onClick={() => handleRoleToggle('admin')}
+                        onClick={() => handleRoleToggle('creator')}
                         className={`flex-1 py-2 border text-[10px] font-bold transition-all flex items-center justify-center gap-2 ${
-                          formData.roles.includes('admin') 
+                          formData.roles.includes('creator') 
                             ? 'bg-white border-white text-black' 
                             : 'bg-transparent border-zinc-800 text-zinc-600 hover:border-zinc-700'
                         }`}
                       >
-                        {formData.roles.includes('admin') ? <Check size={12} /> : <Plus size={12} />}
+                        {formData.roles.includes('creator') ? <Check size={12} /> : <Plus size={12} />}
                         Creator
                       </button>
                     </div>

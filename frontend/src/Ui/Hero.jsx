@@ -4,22 +4,22 @@ import { PlusCircle, Rocket, ChevronRight } from 'lucide-react';
 
 export default function Hero() {
   return (
-    <section className="relative pt-32 pb-20 px-6 overflow-hidden bg-[#09090b]">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center relative z-10">
+    <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 px-6 overflow-hidden bg-[#09090b] antialiased">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-center relative z-10">
         
-        {/* Left Side: Content */}
+        {/* Left Side: Content - Tight and small font scaling */}
         <div className="lg:col-span-6 space-y-8">
           <motion.div 
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-6"
+            transition={{ duration: 0.4 }}
+            className="space-y-5"
           >
-            <h1 className="text-4xl md:text-6xl font-medium text-white tracking-tight leading-[1.1]">
+            <h1 className="text-3xl md:text-5xl font-medium text-white tracking-tighter leading-[1.1]">
               Build your logic. <br />
-              <span className="text-zinc-500 italic font-serif">Solve the best tasks.</span>
+              <span className="text-zinc-500 italic">Solve the best tasks.</span>
             </h1>
-            <p className="text-base text-zinc-400 leading-relaxed max-w-lg">
+            <p className="text-[12px] md:text-[13px] text-zinc-500 leading-relaxed max-w-md italic border-l border-zinc-800 pl-5">
               Join a community of students who love coding. Solve fun problems created by others, or make your own tasks to challenge your friends and track their progress.
             </p>
           </motion.div>
@@ -27,50 +27,53 @@ export default function Hero() {
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
-            className="flex flex-wrap gap-4"
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="flex flex-wrap gap-3"
           >
             <Link 
               to="/signup" 
-              className="bg-white text-black px-6 py-3 text-[13px] font-bold rounded-none hover:bg-zinc-200 transition-all flex items-center gap-2 group"
+              className="bg-white text-black px-5 py-2 text-[11px] font-bold transition-all flex items-center gap-2 rounded-none active:scale-[0.98]"
             >
-              <Rocket size={16} />
+              <Rocket size={13} />
               <span>Browse challenges</span>
-              <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              <ChevronRight size={13} />
             </Link>
             
             <Link 
               to="/signup" 
-              className="border border-zinc-700 text-zinc-300 px-6 py-3 text-[13px] font-bold rounded-none hover:bg-zinc-900 transition-all flex items-center gap-2"
+              className="border border-zinc-800 text-zinc-400 px-5 py-2 text-[11px] font-bold hover:bg-zinc-900 transition-all flex items-center gap-2 rounded-none active:scale-[0.98]"
             >
-              <PlusCircle size={16} />
+              <PlusCircle size={13} />
               <span>Make a challenge</span>
             </Link>
           </motion.div>
         </div>
 
-        {/* Right Side: Product Image */}
+        {/* Right Side: Product Image - Hairline Framing */}
         <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="lg:col-span-6 relative group"
+          transition={{ delay: 0.15, duration: 0.5 }}
+          className="lg:col-span-6 relative"
         >
-          <div className="absolute -inset-1 bg-white/5 blur-2xl rounded-full" />
-          <div className="relative bg-[#0c0c0e] border border-zinc-800 p-1 shadow-2xl">
+          <div className="relative bg-[#0c0c0e] border border-white/5 p-1 shadow-2xl">
             <img 
               src="/platform.png" 
               alt="Coding Arena" 
-              className="w-full h-auto brightness-90 group-hover:brightness-100 transition-all duration-500"
+              className="w-full h-auto brightness-[0.8] transition-all duration-700 select-none"
             />
-            
           </div>
         </motion.div>
       </div>
 
-      {/* Very Subtle Grid - Not too much motion */}
-      <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none" 
-           style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      {/* Minimal Background Grid */}
+      <div 
+        className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none" 
+        style={{ 
+          backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', 
+          backgroundSize: '32px 32px' 
+        }} 
+      />
     </section>
   );
 }
