@@ -9,6 +9,8 @@ from bson import ObjectId
 from typing import List, Optional
 from models import OrgCreateRequest, Organization, OrganizationMember, InviteRequest
 from pymongo.errors import DuplicateKeyError
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from fastapi import BackgroundTasks
 
@@ -18,13 +20,18 @@ router = APIRouter(prefix="/orgs", tags=["Organizations"])
 
 
 async def ensure_org_creator(current_user: dict, org_id: str):
-    if "creator" in current_user.get("roles", []):
+    user_id = str(current_user["id"])
+
+    # 1. Check if user is the owner
+    org = await db.organizations.find_one({"_id": ObjectId(org_id)})
+    if org and str(org.get("owner_id")) == user_id:
         return True
-    
+
+    # 2. Check membership
     membership = await db.org_members.find_one({
         "org_id": org_id,
-        "user_id": str(current_user["id"]),
-        "role": {"$in": ["owner", "creator"]},
+        "user_id": user_id,
+        "role": "creator",
         "status": "active"
     })
     
@@ -75,7 +82,7 @@ async def create_organization(
             org_id=org_id,
             user_id=user_id,
             invited_by=user_id,
-            role="owner",
+            role="creator",
             status="active",
             joined_at=datetime.now(timezone.utc)
         )
@@ -100,18 +107,32 @@ async def create_organization(
 @router.get("/my-organizations")
 async def get_my_organizations(current_user: dict = Depends(get_current_user)):
     user_id = str(current_user["id"])
-    
+
+    # 1. Get memberships
     memberships = await db.org_members.find(
         {"user_id": user_id, "status": "active"}
     ).to_list(length=100)
-    
+
     if not memberships:
         return []
 
-    org_ids = [m["org_id"] for m in memberships]
-    
+    # 2. Build fast lookup map
+    membership_map = {m["org_id"]: m for m in memberships}
+    org_ids = list(membership_map.keys())
+
+    valid_object_ids = []
+    for oid in org_ids:
+        try:
+            valid_object_ids.append(ObjectId(oid))
+        except InvalidId:
+            continue
+
+    if not valid_object_ids:
+        return []
+
+    # 4. Aggregation pipeline
     pipeline = [
-        {"$match": {"_id": {"$in": [ObjectId(oid) for oid in org_ids]}}},
+        {"$match": {"_id": {"$in": valid_object_ids}}},
         {"$addFields": {"string_id": {"$toString": "$_id"}}},
         {
             "$lookup": {
@@ -130,28 +151,36 @@ async def get_my_organizations(current_user: dict = Depends(get_current_user)):
 
     organizations = await db.organizations.aggregate(pipeline).to_list(length=100)
 
+    # 5. Final filtering
     final_orgs = []
+
     for org in organizations:
         org_id_str = str(org["_id"])
-        user_membership = next(m for m in memberships if m["org_id"] == org_id_str)
+        user_membership = membership_map.get(org_id_str)
+
+        if not user_membership:
+            continue
+
         user_role = user_membership.get("role")
-        
-        is_privileged = user_role in ["owner", "creator"]
+
+        is_owner = str(org.get("owner_id")) == user_id
+        is_creator = user_role == "creator"
+        is_privileged = is_owner or is_creator
+
         has_content = org.get("assessment_count", 0) > 0
-        
+
         if is_privileged or has_content:
-            # --- THE FIX IS HERE ---
             final_orgs.append({
                 "id": org_id_str,
                 "name": org["name"],
                 "slug": org["slug"],
                 "role": user_role,
-                # We MUST send the owner_id so the frontend can identify the "Boss"
-                "owner_id": str(org.get("owner_id", "")), 
+                "owner_id": str(org.get("owner_id", "")),
                 "assessment_count": org.get("assessment_count", 0)
             })
 
     return final_orgs
+
 
 @router.get("/invites/pending")
 async def get_my_pending_invites(current_user: dict = Depends(get_current_user)):
