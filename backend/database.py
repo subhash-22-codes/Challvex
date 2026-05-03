@@ -3,6 +3,7 @@ import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ASCENDING, DESCENDING
 import certifi
+from datetime import timezone
 logger = logging.getLogger(__name__)
 
 # ----------------------------
@@ -19,6 +20,8 @@ DB_NAME = os.getenv("MONGO_DB_NAME", "daily_code_tracker")
 # ----------------------------
 client = AsyncIOMotorClient(
     MONGO_URI,
+    tz_aware=True,
+    tzinfo=timezone.utc,
     serverSelectionTimeoutMS=10000,
     connectTimeoutMS=10000,
     socketTimeoutMS=10000,
